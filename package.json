@@ -1,5 +1,6 @@
 {
   "name": "package-tracker",
+  "author": "Xinyu He",
   "version": "0.1.0",
   "private": true,
   "scripts": {

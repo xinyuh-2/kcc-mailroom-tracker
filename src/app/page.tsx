@@ -118,7 +118,26 @@ export default function PackageTrackerApp() {
         scannerRef.current = html5QrCode;
         await html5QrCode.start(
           { facingMode: 'environment' },
-          { fps: 10, qrbox: { width: 250, height: 120 } },
+          {
+            fps: 15, // Faster frame checks for instant recognition
+            qrbox: { width: 320, height: 120 }, // Wide rectangle perfectly sized for shipping barcodes
+            aspectRatio: 1.777778, // Widescreen format to prevent video distortion
+            formatsToSupport: [
+              0, // QR_CODE
+              3, // CODE_39
+              11, // CODE_128 (Primary carrier format for UPS, FedEx, Amazon)
+              5, // EAN_13
+              13, // UPC_A
+            ],
+            experimentalFeatures: {
+              useBarCodeDetectorIfSupported: true, // Uses native iOS Safari / Android Chrome hardware barcode engine
+            },
+            videoConstraints: {
+              facingMode: 'environment',
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
+            },
+          },
           (decodedText) => {
             setTrackingNum(decodedText);
             stopScanner();
@@ -777,9 +796,7 @@ export default function PackageTrackerApp() {
             </div>
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              {/* Delivery Photo Upload Section */}
+          {/* Delivery Photo Upload Section */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Delivery / Drop-Off Photo (Optional)
@@ -800,6 +817,9 @@ export default function PackageTrackerApp() {
               />
             )}
           </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
               Recipient Signature (One signature for all selected packages)
             </label>
             <div className="border border-gray-300 rounded bg-gray-50 p-2 flex flex-col items-center">
@@ -907,26 +927,26 @@ export default function PackageTrackerApp() {
                       <span className="text-gray-400">—</span>
                     )}
                   </td>
-                  <td className="p-2">
+                  <td className="p-2 text-xs">
                     {p.photo_url ? (
                       <a
                         href={p.photo_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-blue-600 underline text-xs"
+                        className="text-blue-600 underline"
                       >
                         View
                       </a>
                     ) : (
-                      <span className="text-gray-400 text-xs">—</span>
+                      <span className="text-gray-400">None</span>
                     )}
                   </td>
                   <td className="p-2">
                     <span
-                      className={`px-2 py-1 rounded text-xs ${
-                        p.status === 'Delivered'
-                          ? 'bg-green-100 text-green-800'
-                          : 'bg-yellow-100 text-yellow-800'
+                      className={`px-2 py-0.5 text-xs rounded-full font-semibold ${
+                        p.status === 'Pending'
+                          ? 'bg-amber-100 text-amber-800'
+                          : 'bg-green-100 text-green-800'
                       }`}
                     >
                       {p.status}
