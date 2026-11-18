@@ -95,7 +95,11 @@ export default function PackageTrackerApp() {
 
   useEffect(() => {
     if (canvasRef.current && activeTab === 'delivery') {
-      signaturePadRef.current = new SignaturePad(canvasRef.current);
+      signaturePadRef.current = new SignaturePad(canvasRef.current, {
+        penColor: 'rgb(15, 23, 42)',
+        minWidth: 2,
+        maxWidth: 4,
+      });
     }
     if (activeTab !== 'intake' && isScanning) {
       stopScanner();
@@ -251,7 +255,6 @@ export default function PackageTrackerApp() {
       return;
     }
 
-    // Email #1: Arrival Notification
     if (recipientEmail.trim()) {
       try {
         await fetch('/api/send-email', {
@@ -370,7 +373,6 @@ export default function PackageTrackerApp() {
       return;
     }
 
-    // Email #2: Delivery Confirmation
     if (deliveryEmail.trim()) {
       const selectedList = packages.filter((p) => selectedPackageIds.includes(p.id));
       const originalRecipientName = selectedList[0]?.recipient_name || deliveryRecipient;
@@ -453,25 +455,27 @@ export default function PackageTrackerApp() {
   });
 
   return (
-    <main className="max-w-4xl mx-auto p-4 font-sans pb-20">
-      <h1 className="text-2xl font-bold mb-4 text-center">Mailroom Package Tracker</h1>
+    <main className="max-w-4xl mx-auto p-4 font-sans pb-20 text-gray-900 font-medium">
+      <h1 className="text-3xl font-extrabold mb-6 text-center text-blue-900 tracking-wide">
+        Mailroom Package Tracker
+      </h1>
 
-      <div className="flex border-b mb-6">
+      <div className="flex border-b-2 border-gray-300 mb-6 font-bold text-base">
         <button
-          className={`flex-1 py-2 font-semibold ${
+          className={`flex-1 py-3 text-center transition-colors ${
             activeTab === 'intake'
-              ? 'border-b-2 border-blue-600 text-blue-600'
-              : 'text-gray-500'
+              ? 'border-b-4 border-blue-700 text-blue-800 bg-blue-50/50'
+              : 'text-gray-600 hover:text-gray-900'
           }`}
           onClick={() => setActiveTab('intake')}
         >
           1. Log New Package
         </button>
         <button
-          className={`flex-1 py-2 font-semibold ${
+          className={`flex-1 py-3 text-center transition-colors ${
             activeTab === 'delivery'
-              ? 'border-b-2 border-blue-600 text-blue-600'
-              : 'text-gray-500'
+              ? 'border-b-4 border-blue-700 text-blue-800 bg-blue-50/50'
+              : 'text-gray-600 hover:text-gray-900'
           }`}
           onClick={() => setActiveTab('delivery')}
         >
@@ -480,72 +484,72 @@ export default function PackageTrackerApp() {
       </div>
 
       {activeTab === 'intake' && (
-        <form onSubmit={handleIntake} className="space-y-4 bg-white p-6 rounded-lg shadow">
-          <div className="flex justify-between items-center">
-            <h2 className="text-lg font-semibold">Incoming Package Intake</h2>
-            <span className="text-xs text-gray-500">Auto-timestamped</span>
+        <form onSubmit={handleIntake} className="space-y-5 bg-white p-7 rounded-xl shadow-lg border border-gray-200">
+          <div className="flex justify-between items-center border-b pb-3">
+            <h2 className="text-xl font-extrabold text-gray-900">Incoming Package Intake</h2>
+            <span className="text-sm font-semibold text-gray-600 bg-gray-100 px-2.5 py-1 rounded">Auto-timestamped</span>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-base font-bold text-gray-900 mb-1.5">
               Tracking Number / Barcode *
             </label>
-            <div className="flex gap-2 mt-1">
+            <div className="flex gap-2.5">
               <input
                 type="text"
                 value={trackingNum}
                 onChange={(e) => setTrackingNum(e.target.value)}
                 required
-                className="flex-1 p-2 border rounded"
+                className="flex-1 p-3 text-base border-2 border-gray-400 rounded-lg font-semibold focus:border-blue-600 focus:outline-none"
                 placeholder="Scan or type tracking #"
               />
               <button
                 type="button"
                 onClick={isScanning ? stopScanner : startScanner}
-                className={`px-3 py-2 rounded font-semibold text-sm text-white ${
-                  isScanning ? 'bg-red-600' : 'bg-gray-800'
+                className={`px-5 py-3 rounded-lg font-bold text-base text-white shadow ${
+                  isScanning ? 'bg-red-700 hover:bg-red-800' : 'bg-gray-900 hover:bg-black'
                 }`}
               >
                 {isScanning ? 'Stop' : 'Scan Barcode'}
               </button>
             </div>
             {isScanning && (
-              <div id="barcode-reader" className="mt-3 border rounded overflow-hidden" />
+              <div id="barcode-reader" className="mt-3 border-2 border-gray-400 rounded-lg overflow-hidden" />
             )}
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Recipient Name *</label>
+              <label className="block text-base font-bold text-gray-900 mb-1.5">Recipient Name *</label>
               <input
                 type="text"
                 value={recipient}
                 onChange={(e) => setRecipient(e.target.value)}
                 required
-                className="mt-1 w-full p-2 border rounded"
+                className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold focus:border-blue-600 focus:outline-none"
                 placeholder="e.g. John Doe"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Recipient Email</label>
+              <label className="block text-base font-bold text-gray-900 mb-1.5">Recipient Email</label>
               <input
                 type="email"
                 value={recipientEmail}
                 onChange={(e) => setRecipientEmail(e.target.value)}
-                className="mt-1 w-full p-2 border rounded"
+                className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold focus:border-blue-600 focus:outline-none"
                 placeholder="e.g. jdoe@hawaii.edu"
               />
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Carrier Company *</label>
+              <label className="block text-base font-bold text-gray-900 mb-1.5">Carrier Company *</label>
               <select
                 value={carrier}
                 onChange={(e) => setCarrier(e.target.value)}
-                className="mt-1 w-full p-2 border rounded bg-white"
+                className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold bg-white focus:border-blue-600 focus:outline-none"
               >
                 {CARRIERS.map((c) => (
                   <option key={c} value={c}>
@@ -560,18 +564,18 @@ export default function PackageTrackerApp() {
                   value={customCarrier}
                   onChange={(e) => setCustomCarrier(e.target.value)}
                   required
-                  placeholder="Enter custom carrier (e.g. OnTrac)"
-                  className="mt-2 w-full p-2 border rounded bg-blue-50/40"
+                  placeholder="Enter custom carrier..."
+                  className="mt-2.5 w-full p-3 text-base border-2 border-blue-400 rounded-lg font-semibold bg-blue-50/50 focus:outline-none"
                 />
               )}
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Carrier Type / Service *</label>
+              <label className="block text-base font-bold text-gray-900 mb-1.5">Carrier Type / Service *</label>
               <select
                 value={carrierType}
                 onChange={(e) => setCarrierType(e.target.value)}
-                className="mt-1 w-full p-2 border rounded bg-white"
+                className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold bg-white focus:border-blue-600 focus:outline-none"
               >
                 {CARRIERS_TYPES.map((type) => (
                   <option key={type} value={type}>
@@ -587,19 +591,19 @@ export default function PackageTrackerApp() {
                   onChange={(e) => setCustomCarrierType(e.target.value)}
                   required
                   placeholder="Enter custom type..."
-                  className="mt-2 w-full p-2 border rounded bg-blue-50/40"
+                  className="mt-2.5 w-full p-3 text-base border-2 border-blue-400 rounded-lg font-semibold bg-blue-50/50 focus:outline-none"
                 />
               )}
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700">Campus Building *</label>
+              <label className="block text-base font-bold text-gray-900 mb-1.5">Campus Building *</label>
               <select
                 value={building}
                 onChange={(e) => setBuilding(e.target.value)}
-                className="mt-1 w-full p-2 border rounded bg-white"
+                className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold bg-white focus:border-blue-600 focus:outline-none"
               >
                 {CAMPUS_BUILDINGS.map((bldg) => (
                   <option key={bldg} value={bldg}>
@@ -610,44 +614,44 @@ export default function PackageTrackerApp() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">Room Number</label>
+              <label className="block text-base font-bold text-gray-900 mb-1.5">Room Number</label>
               <input
                 type="text"
                 value={roomNumber}
                 onChange={(e) => setRoomNumber(e.target.value)}
-                className="mt-1 w-full p-2 border rounded"
+                className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold focus:border-blue-600 focus:outline-none"
                 placeholder="e.g. 102 or 204B"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">Received By (Staff) *</label>
+            <label className="block text-base font-bold text-gray-900 mb-1.5">Received By (Staff) *</label>
             <input
               type="text"
               value={receivedBy}
               onChange={(e) => setReceivedBy(e.target.value)}
               required
-              className="mt-1 w-full p-2 border rounded"
+              className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold focus:border-blue-600 focus:outline-none"
               placeholder="Your name or initials"
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700">
+            <label className="block text-base font-bold text-gray-900 mb-1.5">
               Additional Comments / Notes
             </label>
             <textarea
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               rows={2}
-              className="mt-1 w-full p-2 border rounded"
+              className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold focus:border-blue-600 focus:outline-none"
               placeholder="e.g. Fragile, oversized box, perishable..."
             />
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-base font-bold text-gray-900 mb-1.5">
               Package Photo (Optional)
             </label>
             <input
@@ -655,13 +659,13 @@ export default function PackageTrackerApp() {
               accept="image/*"
               capture="environment"
               onChange={handlePhotoSelect}
-              className="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700"
+              className="block w-full text-base font-semibold text-gray-800 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-blue-100 file:text-blue-900 hover:file:bg-blue-200 cursor-pointer"
             />
             {photoPreview && (
               <img
                 src={photoPreview}
                 alt="Package preview"
-                className="mt-2 h-32 w-auto rounded border object-cover"
+                className="mt-3 h-36 w-auto rounded-lg border-2 border-gray-400 object-cover shadow"
               />
             )}
           </div>
@@ -669,7 +673,7 @@ export default function PackageTrackerApp() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-blue-600 text-white p-2.5 rounded font-semibold"
+            className="w-full bg-blue-700 hover:bg-blue-800 text-white p-3.5 rounded-xl font-bold text-lg shadow-md transition-all"
           >
             {loading ? 'Saving Package...' : 'Log Package'}
           </button>
@@ -677,25 +681,25 @@ export default function PackageTrackerApp() {
       )}
 
       {activeTab === 'delivery' && (
-        <form onSubmit={handleDeliveryCheckout} className="space-y-6 bg-white p-6 rounded-lg shadow">
-          <h2 className="text-lg font-semibold">Batch Pickup &amp; Signature</h2>
+        <form onSubmit={handleDeliveryCheckout} className="space-y-6 bg-white p-7 rounded-xl shadow-lg border border-gray-200">
+          <h2 className="text-xl font-extrabold text-gray-900 border-b pb-3">Batch Pickup &amp; Signature</h2>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-base font-bold text-gray-900 mb-1.5">
                 Recipient Email (for automated receipt)
               </label>
               <input
                 type="email"
                 value={deliveryEmail}
                 onChange={(e) => setDeliveryEmail(e.target.value)}
-                className="mt-1 w-full p-2 border rounded"
+                className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold focus:border-blue-600 focus:outline-none"
                 placeholder="e.g. jdoe@hawaii.edu"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700">
+              <label className="block text-base font-bold text-gray-900 mb-1.5">
                 Delivered By (Staff) *
               </label>
               <input
@@ -703,14 +707,14 @@ export default function PackageTrackerApp() {
                 value={deliveredBy}
                 onChange={(e) => setDeliveredBy(e.target.value)}
                 required
-                className="mt-1 w-full p-2 border rounded"
+                className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold focus:border-blue-600 focus:outline-none"
                 placeholder="Staff delivering package"
               />
             </div>
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-2">
+            <label className="block text-base font-bold text-gray-900 mb-2">
               Select Pending Packages ({selectedPackageIds.length} selected):
             </label>
             <input
@@ -718,16 +722,16 @@ export default function PackageTrackerApp() {
               value={deliverySearch}
               onChange={(e) => setDeliverySearch(e.target.value)}
               placeholder="Search by recipient, building, or tracking #..."
-              className="mb-2 w-full p-2 text-sm border rounded bg-gray-50"
+              className="mb-3 w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold bg-gray-50 focus:outline-none"
             />
-            <div className="max-h-60 overflow-y-auto border p-3 rounded space-y-2.5">
+            <div className="max-h-64 overflow-y-auto border-2 border-gray-300 p-3.5 rounded-xl space-y-3 bg-gray-50/50">
               {pendingPackages.length === 0 ? (
-                <p className="text-sm text-gray-500">No matching pending packages on shelf.</p>
+                <p className="text-base font-semibold text-gray-600 text-center py-4">No matching pending packages on shelf.</p>
               ) : (
                 pendingPackages.map((pkg) => (
                   <label
                     key={pkg.id}
-                    className="flex items-start space-x-3 cursor-pointer border-b pb-2 last:border-b-0"
+                    className="flex items-start space-x-3.5 cursor-pointer border-b border-gray-300 pb-3 last:border-b-0 hover:bg-gray-100/80 p-2 rounded-lg transition-colors"
                   >
                     <input
                       type="checkbox"
@@ -741,18 +745,18 @@ export default function PackageTrackerApp() {
                           setSelectedPackageIds(selectedPackageIds.filter((id) => id !== pkg.id));
                         }
                       }}
-                      className="mt-1 h-4 w-4 text-blue-600 rounded"
+                      className="mt-1 h-5 w-5 text-blue-700 rounded border-gray-400 focus:ring-blue-600"
                     />
-                    <div className="text-sm flex-1">
+                    <div className="text-base flex-1 font-semibold text-gray-900">
                       <div>
-                        <strong>{pkg.recipient_name}</strong>
+                        <strong className="text-lg text-blue-950">{pkg.recipient_name}</strong>
                       </div>
-                      <div className="text-xs text-gray-600 mt-0.5">
+                      <div className="text-sm font-semibold text-gray-700 mt-0.5">
                         {pkg.building} {pkg.room_number ? `Rm ${pkg.room_number}` : ''} •{' '}
-                        <span className="font-mono">{pkg.tracking_number}</span> ({pkg.carrier} {pkg.carrier_type ? `/ ${pkg.carrier_type}` : ''})
+                        <span className="font-mono font-bold text-gray-900">{pkg.tracking_number}</span> ({pkg.carrier} {pkg.carrier_type ? `/ ${pkg.carrier_type}` : ''})
                       </div>
                       {pkg.notes && (
-                        <div className="text-xs text-amber-700 mt-0.5">Note: {pkg.notes}</div>
+                        <div className="text-sm font-bold text-amber-800 mt-1">Note: {pkg.notes}</div>
                       )}
                     </div>
                     {pkg.photo_url && (
@@ -760,7 +764,7 @@ export default function PackageTrackerApp() {
                         href={pkg.photo_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-xs text-blue-600 underline"
+                        className="text-sm font-bold text-blue-700 underline self-center px-2 py-1 bg-blue-50 rounded"
                       >
                         Photo
                       </a>
@@ -772,7 +776,7 @@ export default function PackageTrackerApp() {
           </div>
 
           <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
+            <label className="block text-base font-bold text-gray-900 mb-1.5">
               Delivery / Drop-Off Photo (Optional)
             </label>
             <input
@@ -781,22 +785,21 @@ export default function PackageTrackerApp() {
               capture="environment"
               ref={deliveryPhotoInputRef}
               onChange={handleDeliveryPhotoSelect}
-              className="block w-full text-sm text-gray-600 file:mr-3 file:py-2 file:px-4 file:rounded file:border-0 file:text-sm file:font-semibold file:bg-green-50 file:text-green-700"
+              className="block w-full text-base font-semibold text-gray-800 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-green-100 file:text-green-900 hover:file:bg-green-200 cursor-pointer"
             />
             {deliveryPhotoPreview && (
               <img
                 src={deliveryPhotoPreview}
                 alt="Delivery preview"
-                className="mt-2 h-32 w-auto rounded border object-cover"
+                className="mt-3 h-36 w-auto rounded-lg border-2 border-gray-400 object-cover shadow"
               />
             )}
           </div>
 
-          {/* RECIPIENT NAME & POSITION MOVED RIGHT ABOVE THE SIGNATURE PAD */}
-          <div className="space-y-4 border-t pt-4">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-4 border-t-2 border-gray-300 pt-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700">
+                <label className="block text-base font-bold text-gray-900 mb-1.5">
                   Recipient Name (Picking up) *
                 </label>
                 <input
@@ -804,17 +807,17 @@ export default function PackageTrackerApp() {
                   value={deliveryRecipient}
                   onChange={(e) => setDeliveryRecipient(e.target.value)}
                   required
-                  className="mt-1 w-full p-2 border rounded"
+                  className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold bg-white focus:border-blue-600 focus:outline-none"
                   placeholder="Person signing"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700">Position *</label>
+                <label className="block text-base font-bold text-gray-900 mb-1.5">Position *</label>
                 <select
                   value={deliveryPosition}
                   onChange={(e) => setDeliveryPosition(e.target.value)}
-                  className="mt-1 w-full p-2 border rounded bg-white"
+                  className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold bg-white focus:border-blue-600 focus:outline-none"
                 >
                   {POSITIONS.map((pos) => (
                     <option key={pos} value={pos}>
@@ -826,20 +829,20 @@ export default function PackageTrackerApp() {
             </div>
 
             <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">
+              <label className="block text-base font-bold text-gray-900 mb-1.5">
                 Recipient Signature (One signature for all selected packages) *
               </label>
-              <div className="border border-gray-300 rounded bg-gray-50 p-2 flex flex-col items-center">
+              <div className="border-2 border-gray-400 rounded-xl bg-gray-50 p-3 flex flex-col items-center shadow-inner">
                 <canvas
                   ref={canvasRef}
                   width={450}
                   height={200}
-                  className="w-full border bg-white rounded cursor-crosshair touch-none"
+                  className="w-full border-2 border-dashed border-gray-500 bg-white rounded-lg cursor-crosshair touch-none shadow-sm"
                 />
                 <button
                   type="button"
                   onClick={() => signaturePadRef.current?.clear()}
-                  className="mt-2 text-xs text-red-600 font-semibold"
+                  className="mt-2.5 text-sm font-bold text-red-700 hover:text-red-900 bg-red-50 px-3 py-1 rounded-md border border-red-200"
                 >
                   Clear Signature
                 </button>
@@ -850,7 +853,7 @@ export default function PackageTrackerApp() {
           <button
             type="submit"
             disabled={loading}
-            className="w-full bg-green-600 text-white p-2.5 rounded font-semibold"
+            className="w-full bg-green-700 hover:bg-green-800 text-white p-3.5 rounded-xl font-bold text-lg shadow-md transition-all"
           >
             {loading ? 'Processing...' : 'Complete Batch Delivery & Send Receipt'}
           </button>
@@ -858,23 +861,23 @@ export default function PackageTrackerApp() {
       )}
 
       {/* Full Package Log Table */}
-      <div className="mt-8 bg-white p-6 rounded-lg shadow">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-3">
-          <h2 className="text-lg font-semibold">
+      <div className="mt-8 bg-white p-7 rounded-xl shadow-lg border border-gray-200">
+        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
+          <h2 className="text-xl font-extrabold text-gray-900">
             Logged Packages ({filteredHistory.length})
           </h2>
-          <div className="flex gap-2">
+          <div className="flex gap-2.5">
             <input
               type="text"
               value={historySearch}
               onChange={(e) => setHistorySearch(e.target.value)}
               placeholder="Search name, staff, building..."
-              className="p-1.5 text-sm border rounded"
+              className="p-2.5 text-sm border-2 border-gray-400 rounded-lg font-semibold focus:outline-none"
             />
             <select
               value={statusFilter}
               onChange={(e) => setStatusFilter(e.target.value as any)}
-              className="p-1.5 text-sm border rounded bg-white"
+              className="p-2.5 text-sm border-2 border-gray-400 rounded-lg font-semibold bg-white focus:outline-none"
             >
               <option value="All">All</option>
               <option value="Pending">Pending</option>
@@ -884,77 +887,77 @@ export default function PackageTrackerApp() {
         </div>
 
         <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
+          <table className="w-full text-base text-left border-collapse">
             <thead>
-              <tr className="border-b bg-gray-50">
-                <th className="p-2">Recipient</th>
-                <th className="p-2">Location</th>
-                <th className="p-2">Tracking</th>
-                <th className="p-2">Received</th>
-                <th className="p-2">Delivered</th>
-                <th className="p-2">Photo</th>
-                <th className="p-2">Status</th>
+              <tr className="border-b-2 border-gray-300 bg-gray-100 text-gray-900 font-extrabold">
+                <th className="p-3">Recipient</th>
+                <th className="p-3">Location</th>
+                <th className="p-3">Tracking</th>
+                <th className="p-3">Received</th>
+                <th className="p-3">Delivered</th>
+                <th className="p-3">Photo</th>
+                <th className="p-3">Status</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody className="font-semibold text-gray-800">
               {filteredHistory.map((p) => (
-                <tr key={p.id} className="border-b">
-                  <td className="p-2">
-                    <div className="font-medium">{p.recipient_name}</div>
-                    <div className="text-xs text-gray-500">
+                <tr key={p.id} className="border-b border-gray-200 hover:bg-gray-50">
+                  <td className="p-3">
+                    <div className="font-bold text-gray-900">{p.recipient_name}</div>
+                    <div className="text-sm font-semibold text-gray-600">
                       {p.recipient_position} {p.recipient_email ? `• ${p.recipient_email}` : ''}
                     </div>
                   </td>
-                  <td className="p-2 text-xs">
+                  <td className="p-3 text-sm font-semibold">
                     {p.building} {p.room_number ? `Rm ${p.room_number}` : ''}
                   </td>
-                  <td className="p-2">
-                    <div className="font-mono text-xs">{p.tracking_number}</div>
-                    <div className="text-xs text-gray-500">
+                  <td className="p-3">
+                    <div className="font-mono text-sm font-bold text-gray-900">{p.tracking_number}</div>
+                    <div className="text-sm font-semibold text-gray-600">
                       {p.carrier} {p.carrier_type ? `(${p.carrier_type})` : ''}
                     </div>
                     {p.notes && (
-                      <div className="text-xs text-amber-700 mt-0.5">Note: {p.notes}</div>
+                      <div className="text-sm font-bold text-amber-800 mt-0.5">Note: {p.notes}</div>
                     )}
                   </td>
-                  <td className="p-2 text-xs text-gray-600">
+                  <td className="p-3 text-sm font-semibold text-gray-700">
                     <div>{formatDateTime(p.received_at)}</div>
                     {p.received_by && (
-                      <div className="text-gray-400">By: {p.received_by}</div>
+                      <div className="text-gray-500 font-bold">By: {p.received_by}</div>
                     )}
                   </td>
-                  <td className="p-2 text-xs text-gray-600">
+                  <td className="p-3 text-sm font-semibold text-gray-700">
                     {p.status === 'Delivered' ? (
                       <>
                         <div>{formatDateTime(p.delivered_at)}</div>
                         {p.delivered_by && (
-                          <div className="text-gray-400">By: {p.delivered_by}</div>
+                          <div className="text-gray-500 font-bold">By: {p.delivered_by}</div>
                         )}
                       </>
                     ) : (
                       <span className="text-gray-400">—</span>
                     )}
                   </td>
-                  <td className="p-2 text-xs">
+                  <td className="p-3 text-sm">
                     {p.photo_url ? (
                       <a
                         href={p.photo_url}
                         target="_blank"
                         rel="noreferrer"
-                        className="text-blue-600 underline"
+                        className="text-blue-700 font-bold underline"
                       >
                         View
                       </a>
                     ) : (
-                      <span className="text-gray-400">None</span>
+                      <span className="text-gray-400 font-semibold">None</span>
                     )}
                   </td>
-                  <td className="p-2">
+                  <td className="p-3">
                     <span
-                      className={`px-2 py-0.5 text-xs rounded-full font-semibold ${
+                      className={`px-3 py-1 text-xs rounded-full font-extrabold uppercase tracking-wider ${
                         p.status === 'Pending'
-                          ? 'bg-amber-100 text-amber-800'
-                          : 'bg-green-100 text-green-800'
+                          ? 'bg-amber-200 text-amber-900'
+                          : 'bg-green-200 text-green-900'
                       }`}
                     >
                       {p.status}
