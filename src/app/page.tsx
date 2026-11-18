@@ -2,7 +2,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { supabase } from '@/lib/supabase';
 import SignaturePad from 'signature_pad';
-import { Html5Qrcode } from 'html5-qrcode';
+import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
 const POSITIONS = ['Student', 'Faculty', 'Staff', 'Administration', 'Vendor', 'Academics', 'Other'];
 const CARRIERS = ['Amazon', 'USPS', 'UPS', 'FedEx', 'DHL', 'OnTrac/Lasership', 'Internal Campus', 'Other'];
@@ -114,28 +114,35 @@ export default function PackageTrackerApp() {
     setIsScanning(true);
     setTimeout(async () => {
       try {
-        const html5QrCode = new Html5Qrcode('barcode-reader');
+        const html5QrCode = new Html5Qrcode('barcode-reader', {
+          formatsToSupport: [
+            Html5QrcodeSupportedFormats.CODE_128,
+            Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.ITF,
+            Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.QR_CODE,
+          ],
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true,
+          },
+          verbose: false,
+        });
         scannerRef.current = html5QrCode;
+
         await html5QrCode.start(
           { facingMode: 'environment' },
           {
-            fps: 15, // Faster frame checks for instant recognition
-            qrbox: { width: 320, height: 120 }, // Wide rectangle perfectly sized for shipping barcodes
-            aspectRatio: 1.777778, // Widescreen format to prevent video distortion
-            formatsToSupport: [
-              0, // QR_CODE
-              3, // CODE_39
-              11, // CODE_128 (Primary carrier format for UPS, FedEx, Amazon)
-              5, // EAN_13
-              13, // UPC_A
-            ],
-            experimentalFeatures: {
-              useBarCodeDetectorIfSupported: true, // Uses native iOS Safari / Android Chrome hardware barcode engine
-            },
+            fps: 20,
+            qrbox: (viewfinderWidth, viewfinderHeight) => ({
+              width: Math.floor(viewfinderWidth * 0.9),
+              height: Math.floor(viewfinderHeight * 0.35),
+            }),
             videoConstraints: {
               facingMode: 'environment',
-              width: { ideal: 1920 },
-              height: { ideal: 1080 },
+              width: { min: 1280, ideal: 1920 },
+              height: { min: 720, ideal: 1080 },
+              advanced: [{ focusMode: 'continuous' } as any],
             },
           },
           (decodedText) => {
@@ -532,7 +539,6 @@ export default function PackageTrackerApp() {
             </div>
           </div>
 
-          {/* TWO SEPARATE DROPDOWNS: CARRIER COMPANY & CARRIER SERVICE TYPE */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">Carrier Company *</label>
@@ -796,7 +802,6 @@ export default function PackageTrackerApp() {
             </div>
           </div>
 
-          {/* Delivery Photo Upload Section */}
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               Delivery / Drop-Off Photo (Optional)
