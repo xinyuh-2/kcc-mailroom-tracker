@@ -683,37 +683,6 @@ export default function PackageTrackerApp() {
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700">
-                Recipient Name (Picking up) *
-              </label>
-              <input
-                type="text"
-                value={deliveryRecipient}
-                onChange={(e) => setDeliveryRecipient(e.target.value)}
-                required
-                className="mt-1 w-full p-2 border rounded"
-                placeholder="Person signing"
-              />
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700">Position *</label>
-              <select
-                value={deliveryPosition}
-                onChange={(e) => setDeliveryPosition(e.target.value)}
-                className="mt-1 w-full p-2 border rounded bg-white"
-              >
-                {POSITIONS.map((pos) => (
-                  <option key={pos} value={pos}>
-                    {pos}
-                  </option>
-                ))}
-              </select>
-            </div>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700">
                 Recipient Email (for automated receipt)
               </label>
               <input
@@ -823,24 +792,58 @@ export default function PackageTrackerApp() {
             )}
           </div>
 
-          <div>
-            <label className="block text-sm font-medium text-gray-700 mb-1">
-              Recipient Signature (One signature for all selected packages)
-            </label>
-            <div className="border border-gray-300 rounded bg-gray-50 p-2 flex flex-col items-center">
-              <canvas
-                ref={canvasRef}
-                width={450}
-                height={200}
-                className="w-full border bg-white rounded cursor-crosshair touch-none"
-              />
-              <button
-                type="button"
-                onClick={() => signaturePadRef.current?.clear()}
-                className="mt-2 text-xs text-red-600 font-semibold"
-              >
-                Clear Signature
-              </button>
+          {/* RECIPIENT NAME & POSITION MOVED RIGHT ABOVE THE SIGNATURE PAD */}
+          <div className="space-y-4 border-t pt-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-700">
+                  Recipient Name (Picking up) *
+                </label>
+                <input
+                  type="text"
+                  value={deliveryRecipient}
+                  onChange={(e) => setDeliveryRecipient(e.target.value)}
+                  required
+                  className="mt-1 w-full p-2 border rounded"
+                  placeholder="Person signing"
+                />
+              </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700">Position *</label>
+                <select
+                  value={deliveryPosition}
+                  onChange={(e) => setDeliveryPosition(e.target.value)}
+                  className="mt-1 w-full p-2 border rounded bg-white"
+                >
+                  {POSITIONS.map((pos) => (
+                    <option key={pos} value={pos}>
+                      {pos}
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Recipient Signature (One signature for all selected packages) *
+              </label>
+              <div className="border border-gray-300 rounded bg-gray-50 p-2 flex flex-col items-center">
+                <canvas
+                  ref={canvasRef}
+                  width={450}
+                  height={200}
+                  className="w-full border bg-white rounded cursor-crosshair touch-none"
+                />
+                <button
+                  type="button"
+                  onClick={() => signaturePadRef.current?.clear()}
+                  className="mt-2 text-xs text-red-600 font-semibold"
+                >
+                  Clear Signature
+                </button>
+              </div>
             </div>
           </div>
 
