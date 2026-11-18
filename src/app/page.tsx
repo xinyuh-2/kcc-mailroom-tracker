@@ -93,17 +93,43 @@ export default function PackageTrackerApp() {
     fetchPackages();
   }, []);
 
+  // Responsive Canvas Resize for Signature Pad
   useEffect(() => {
-    if (canvasRef.current && activeTab === 'delivery') {
-      signaturePadRef.current = new SignaturePad(canvasRef.current, {
-        penColor: 'rgb(15, 23, 42)',
-        minWidth: 2,
-        maxWidth: 4,
-      });
+    function resizeCanvas() {
+      const canvas = canvasRef.current;
+      if (!canvas || activeTab !== 'delivery') return;
+
+      // Ratio to handle high-density screens cleanly
+      const ratio = Math.max(window.devicePixelRatio || 1, 1);
+      const rect = canvas.getBoundingClientRect();
+      
+      canvas.width = rect.width * ratio;
+      canvas.height = rect.height * ratio;
+      canvas.getContext('2d')?.scale(ratio, ratio);
+
+      if (signaturePadRef.current) {
+        signaturePadRef.current.clear(); // Clear on resize to prevent skewing
+      } else {
+        signaturePadRef.current = new SignaturePad(canvas, {
+          penColor: 'rgb(15, 23, 42)',
+          minWidth: 2,
+          maxWidth: 4,
+        });
+      }
     }
+
+    if (activeTab === 'delivery') {
+      setTimeout(resizeCanvas, 50);
+      window.addEventListener('resize', resizeCanvas);
+    }
+
     if (activeTab !== 'intake' && isScanning) {
       stopScanner();
     }
+
+    return () => {
+      window.removeEventListener('resize', resizeCanvas);
+    };
   }, [activeTab]);
 
   async function fetchPackages() {
@@ -833,12 +859,13 @@ export default function PackageTrackerApp() {
                 Recipient Signature (One signature for all selected packages) *
               </label>
               <div className="border-2 border-gray-400 rounded-xl bg-gray-50 p-3 flex flex-col items-center shadow-inner">
-                <canvas
-                  ref={canvasRef}
-                  width={450}
-                  height={200}
-                  className="w-full border-2 border-dashed border-gray-500 bg-white rounded-lg cursor-crosshair touch-none shadow-sm"
-                />
+                {/* Fixed-height container with w-full ensures the canvas fits cleanly without clipping */}
+                <div className="w-full h-48 bg-white border-2 border-dashed border-gray-500 rounded-lg overflow-hidden relative">
+                  <canvas
+                    ref={canvasRef}
+                    className="w-full h-full cursor-crosshair touch-none block"
+                  />
+                </div>
                 <button
                   type="button"
                   onClick={() => signaturePadRef.current?.clear()}
