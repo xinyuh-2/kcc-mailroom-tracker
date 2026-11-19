@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import SignaturePad from 'signature_pad';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
-const POSITIONS = ['Student', 'Faculty', 'Staff', 'Administration', 'Vendor', 'Academics', 'Other'];
+const POSITIONS = ['Student Assisstant', 'Faculty', 'Staff', 'Administration', 'Vendor', 'Academics', 'Other'];
 const CARRIERS = ['Amazon', 'USPS', 'UPS', 'FedEx', 'DHL', 'OnTrac/Lasership', 'Internal Campus', 'Other'];
 const CARRIERS_TYPES = [
   'Ground',
