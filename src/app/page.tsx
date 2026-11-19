@@ -46,7 +46,12 @@ const CAMPUS_BUILDINGS = [
 export default function PackageTrackerApp() {
   const [activeTab, setActiveTab] = useState<'intake' | 'delivery'>('intake');
   const [packages, setPackages] = useState<any[]>([]);
+  const [directory, setDirectory] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
+
+  // Email Lookup State
+  const [intakeEmailQuery, setIntakeEmailQuery] = useState('');
+  const [deliveryEmailQuery, setDeliveryEmailQuery] = useState('');
 
   // Intake Form State
   const [trackingNum, setTrackingNum] = useState('');
@@ -91,6 +96,7 @@ export default function PackageTrackerApp() {
 
   useEffect(() => {
     fetchPackages();
+    fetchDirectory();
   }, []);
 
   // Responsive Canvas Resize for Signature Pad (prevents bottom clipping & coordinate drift)
@@ -147,6 +153,42 @@ export default function PackageTrackerApp() {
       .select('*')
       .order('received_at', { ascending: false });
     if (data) setPackages(data);
+  }
+
+  async function fetchDirectory() {
+    const { data } = await supabase
+      .from('recipient_directory')
+      .select('*')
+      .order('name', { ascending: true });
+    if (data) setDirectory(data);
+  }
+
+  async function saveToDirectory(entry: {
+    name: string;
+    email: string;
+    building?: string;
+    room_number?: string;
+    position?: string;
+  }) {
+    const cleanEmail = entry.email.trim().toLowerCase();
+    const cleanName = entry.name.trim();
+    if (!cleanEmail || !cleanName) return;
+
+    await supabase.from('recipient_directory').upsert(
+      [
+        {
+          name: cleanName,
+          email: cleanEmail,
+          building: entry.building || null,
+          room_number: entry.room_number || null,
+          position: entry.position || null,
+          updated_at: new Date().toISOString(),
+        },
+      ],
+      { onConflict: 'email' }
+    );
+
+    fetchDirectory();
   }
 
   async function startScanner() {
@@ -291,6 +333,13 @@ export default function PackageTrackerApp() {
     }
 
     if (recipientEmail.trim()) {
+      await saveToDirectory({
+        name: recipient,
+        email: recipientEmail,
+        building,
+        room_number: roomNumber,
+      });
+
       try {
         await fetch('/api/send-email', {
           method: 'POST',
@@ -321,6 +370,7 @@ export default function PackageTrackerApp() {
     setTrackingNum('');
     setRecipient('');
     setRecipientEmail('');
+    setIntakeEmailQuery('');
     setRoomNumber('');
     setCustomCarrier('');
     setCustomCarrierType('');
@@ -412,6 +462,14 @@ export default function PackageTrackerApp() {
       const selectedList = packages.filter((p) => selectedPackageIds.includes(p.id));
       const originalRecipientName = selectedList[0]?.recipient_name || deliveryRecipient;
 
+      await saveToDirectory({
+        name: originalRecipientName,
+        email: deliveryEmail,
+        building: selectedList[0]?.building,
+        room_number: selectedList[0]?.room_number,
+        position: deliveryPosition,
+      });
+
       const pickedUpPackages = selectedList.map((p) => ({
         tracking_number: p.tracking_number,
         carrier: `${p.carrier || ''} ${p.carrier_type ? `(${p.carrier_type})` : ''}`.trim(),
@@ -449,6 +507,7 @@ export default function PackageTrackerApp() {
     setSelectedPackageIds([]);
     setDeliveryRecipient('');
     setDeliveryEmail('');
+    setDeliveryEmailQuery('');
     setDeliveryPosition('Staff');
     setDeliverySearch('');
     signaturePadRef.current?.clear();
@@ -465,6 +524,26 @@ export default function PackageTrackerApp() {
       minute: '2-digit',
     });
   }
+
+  const intakeEmailMatches = intakeEmailQuery.trim()
+    ? directory
+        .filter(
+          (person) =>
+            person.name?.toLowerCase().includes(intakeEmailQuery.toLowerCase()) ||
+            person.email?.toLowerCase().includes(intakeEmailQuery.toLowerCase())
+        )
+        .slice(0, 5)
+    : [];
+
+  const deliveryEmailMatches = deliveryEmailQuery.trim()
+    ? directory
+        .filter(
+          (person) =>
+            person.name?.toLowerCase().includes(deliveryEmailQuery.toLowerCase()) ||
+            person.email?.toLowerCase().includes(deliveryEmailQuery.toLowerCase())
+        )
+        .slice(0, 5)
+    : [];
 
   const pendingPackages = packages.filter((p) => {
     if (p.status !== 'Pending') return false;
@@ -567,15 +646,47 @@ export default function PackageTrackerApp() {
             </div>
 
             <div>
-              <label className="block text-base font-bold text-gray-900 mb-1.5">Recipient Email</label>
+              <label className="block text-base font-bold text-gray-900 mb-1.5">Search Saved Email by Name</label>
               <input
-                type="email"
-                value={recipientEmail}
-                onChange={(e) => setRecipientEmail(e.target.value)}
-                className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold focus:border-blue-600 focus:outline-none"
-                placeholder="e.g. jdoe@hawaii.edu"
+                type="text"
+                value={intakeEmailQuery}
+                onChange={(e) => setIntakeEmailQuery(e.target.value)}
+                className="w-full p-3 text-base border-2 border-gray-300 rounded-lg font-semibold bg-gray-50 focus:border-blue-600 focus:outline-none"
+                placeholder="Type name to look up email..."
               />
+              {intakeEmailMatches.length > 0 && (
+                <div className="mt-1.5 border-2 border-gray-300 rounded-lg bg-white divide-y shadow-sm">
+                  {intakeEmailMatches.map((person) => (
+                    <button
+                      key={person.id}
+                      type="button"
+                      onClick={() => {
+                        if (!recipient.trim()) setRecipient(person.name);
+                        setRecipientEmail(person.email);
+                        if (person.building) setBuilding(person.building);
+                        if (person.room_number && !roomNumber.trim()) setRoomNumber(person.room_number);
+                        setIntakeEmailQuery('');
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 flex justify-between items-center text-sm font-semibold"
+                    >
+                      <span className="font-bold text-gray-900">{person.name}</span>
+                      <span className="text-blue-700 font-bold">{person.email}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
+          </div>
+
+          <div>
+            <label className="block text-base font-bold text-gray-900 mb-1.5">Recipient Email</label>
+            <input
+              type="email"
+              value={recipientEmail}
+              onChange={(e) => setRecipientEmail(e.target.value)}
+              className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold focus:border-blue-600 focus:outline-none"
+              placeholder="e.g. jdoe@hawaii.edu (auto-saves for future lookups)"
+            />
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
@@ -721,16 +832,34 @@ export default function PackageTrackerApp() {
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
             <div>
-              <label className="block text-base font-bold text-gray-900 mb-1.5">
-                Recipient Email (for automated receipt)
-              </label>
+              <label className="block text-base font-bold text-gray-900 mb-1.5">Search Saved Email by Name</label>
               <input
-                type="email"
-                value={deliveryEmail}
-                onChange={(e) => setDeliveryEmail(e.target.value)}
-                className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold focus:border-blue-600 focus:outline-none"
-                placeholder="e.g. jdoe@hawaii.edu"
+                type="text"
+                value={deliveryEmailQuery}
+                onChange={(e) => setDeliveryEmailQuery(e.target.value)}
+                className="w-full p-3 text-base border-2 border-gray-300 rounded-lg font-semibold bg-gray-50 focus:border-blue-600 focus:outline-none"
+                placeholder="Type name to look up email..."
               />
+              {deliveryEmailMatches.length > 0 && (
+                <div className="mt-1.5 border-2 border-gray-300 rounded-lg bg-white divide-y shadow-sm">
+                  {deliveryEmailMatches.map((person) => (
+                    <button
+                      key={person.id}
+                      type="button"
+                      onClick={() => {
+                        if (!deliveryRecipient.trim()) setDeliveryRecipient(person.name);
+                        setDeliveryEmail(person.email);
+                        if (person.position) setDeliveryPosition(person.position);
+                        setDeliveryEmailQuery('');
+                      }}
+                      className="w-full text-left px-3 py-2 hover:bg-blue-50 flex justify-between items-center text-sm font-semibold"
+                    >
+                      <span className="font-bold text-gray-900">{person.name}</span>
+                      <span className="text-blue-700 font-bold">{person.email}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             <div>
@@ -746,6 +875,19 @@ export default function PackageTrackerApp() {
                 placeholder="Staff delivering package"
               />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-base font-bold text-gray-900 mb-1.5">
+              Recipient Email (for automated receipt)
+            </label>
+            <input
+              type="email"
+              value={deliveryEmail}
+              onChange={(e) => setDeliveryEmail(e.target.value)}
+              className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold focus:border-blue-600 focus:outline-none"
+              placeholder="e.g. jdoe@hawaii.edu"
+            />
           </div>
 
           <div>
@@ -869,7 +1011,6 @@ export default function PackageTrackerApp() {
               </label>
               <div className="border-2 border-gray-400 rounded-xl bg-gray-50 p-3 flex flex-col items-center shadow-inner">
                 <div className="w-full h-64 bg-white border-2 border-dashed border-gray-500 rounded-lg overflow-hidden relative">
-                  {/* Subtle baseline guide to keep low signatures inside the box */}
                   <div
                     aria-hidden="true"
                     className="pointer-events-none absolute inset-x-6 bottom-12 border-b border-dashed border-gray-300"
