@@ -4,7 +4,7 @@ import { supabase } from '@/lib/supabase';
 import SignaturePad from 'signature_pad';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
 
-const POSITIONS = ['Student Assisstant', 'Faculty', 'Staff', 'Administration', 'Vendor', 'Academics', 'Other'];
+const POSITIONS = ['Student Assistant', 'Faculty', 'Staff', 'Administration', 'Vendor', 'Academics', 'Other'];
 const CARRIERS = ['Amazon', 'USPS', 'UPS', 'FedEx', 'DHL', 'OnTrac/Lasership', 'Internal Campus', 'Other'];
 const CARRIERS_TYPES = [
   'Ground',
@@ -47,7 +47,7 @@ export default function PackageTrackerApp() {
   const [activeTab, setActiveTab] = useState<'intake' | 'delivery'>('intake');
   const [packages, setPackages] = useState<any[]>([]);
   const [loading, setLoading] = useState(false);
-  
+
   // Intake Form State
   const [trackingNum, setTrackingNum] = useState('');
   const [recipient, setRecipient] = useState('');
@@ -62,11 +62,11 @@ export default function PackageTrackerApp() {
   const [carrierType, setCarrierType] = useState('Ground');
   const [customCarrierType, setCustomCarrierType] = useState('');
   const [notes, setNotes] = useState('');
-  
+
   const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
-  
-  // Barcode Scanner State 
+
+  // Barcode Scanner State
   const [isScanning, setIsScanning] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
 
@@ -81,10 +81,10 @@ export default function PackageTrackerApp() {
   const [deliveryPosition, setDeliveryPosition] = useState('Staff');
   const [deliveredBy, setDeliveredBy] = useState('');
   const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>([]);
-  
+
   const signaturePadRef = useRef<SignaturePad | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  
+
   const [deliveryPhotoFile, setDeliveryPhotoFile] = useState<File | null>(null);
   const [deliveryPhotoPreview, setDeliveryPhotoPreview] = useState<string | null>(null);
   const deliveryPhotoInputRef = useRef<HTMLInputElement | null>(null);
@@ -93,44 +93,53 @@ export default function PackageTrackerApp() {
     fetchPackages();
   }, []);
 
-  // Responsive Canvas Resize for Signature Pad
+  // Responsive Canvas Resize for Signature Pad (prevents bottom clipping & coordinate drift)
   useEffect(() => {
+    if (activeTab !== 'delivery') {
+      if (isScanning) stopScanner();
+      return;
+    }
+
     function resizeCanvas() {
       const canvas = canvasRef.current;
-      if (!canvas || activeTab !== 'delivery') return;
+      if (!canvas) return;
 
-      // Ratio to handle high-density screens cleanly
       const ratio = Math.max(window.devicePixelRatio || 1, 1);
       const rect = canvas.getBoundingClientRect();
-      
-      canvas.width = rect.width * ratio;
-      canvas.height = rect.height * ratio;
-      canvas.getContext('2d')?.scale(ratio, ratio);
+      if (rect.width === 0 || rect.height === 0) return;
 
-      if (signaturePadRef.current) {
-        signaturePadRef.current.clear(); // Clear on resize to prevent skewing
-      } else {
+      const existingData = signaturePadRef.current?.toData();
+
+      canvas.width = Math.floor(rect.width * ratio);
+      canvas.height = Math.floor(rect.height * ratio);
+
+      const ctx = canvas.getContext('2d');
+      if (ctx) {
+        ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
+      }
+
+      if (!signaturePadRef.current) {
         signaturePadRef.current = new SignaturePad(canvas, {
           penColor: 'rgb(15, 23, 42)',
           minWidth: 2,
           maxWidth: 4,
         });
+      } else {
+        signaturePadRef.current.clear();
+        if (existingData && existingData.length > 0) {
+          signaturePadRef.current.fromData(existingData);
+        }
       }
     }
 
-    if (activeTab === 'delivery') {
-      setTimeout(resizeCanvas, 50);
-      window.addEventListener('resize', resizeCanvas);
-    }
-
-    if (activeTab !== 'intake' && isScanning) {
-      stopScanner();
-    }
+    const timer = setTimeout(resizeCanvas, 50);
+    window.addEventListener('resize', resizeCanvas);
 
     return () => {
+      clearTimeout(timer);
       window.removeEventListener('resize', resizeCanvas);
     };
-  }, [activeTab]);
+  }, [activeTab, isScanning]);
 
   async function fetchPackages() {
     const { data } = await supabase
@@ -336,26 +345,26 @@ export default function PackageTrackerApp() {
     setLoading(true);
     const signatureDataUrl = signaturePadRef.current?.toDataURL();
     const deliveredIso = new Date().toISOString();
-    
+
     let deliveryPhotoURL: string | null = null;
 
     if (deliveryPhotoFile) {
       const compressedBlob = await compressImage(deliveryPhotoFile);
       const fileName = `delivery-${Date.now()}-${Math.random().toString(36).substring(2, 7)}.jpg`;
-      const { error: uploadError } = await supabase.storage 
+      const { error: uploadError } = await supabase.storage
         .from('package-photos')
-        .upload(fileName, compressedBlob, { contentType: 'image/jpeg' }); 
+        .upload(fileName, compressedBlob, { contentType: 'image/jpeg' });
 
       if (uploadError) {
-        alert('Delivery photo upload error: ' + uploadError.message); 
-        setLoading(false); 
+        alert('Delivery photo upload error: ' + uploadError.message);
+        setLoading(false);
         return;
       }
 
       const { data: publicURLData } = supabase.storage
         .from('package-photos')
-        .getPublicUrl(fileName); 
-      deliveryPhotoURL = publicURLData.publicUrl; 
+        .getPublicUrl(fileName);
+      deliveryPhotoURL = publicURLData.publicUrl;
     }
 
     const { data: deliveryData, error: deliveryError } = await supabase
@@ -365,7 +374,7 @@ export default function PackageTrackerApp() {
           recipient_name: deliveryRecipient,
           delivered_by: deliveredBy,
           signature_url: signatureDataUrl,
-          photo_url: deliveryPhotoURL, 
+          photo_url: deliveryPhotoURL,
         },
       ])
       .select()
@@ -377,8 +386,8 @@ export default function PackageTrackerApp() {
       return;
     }
 
-    setDeliveryPhotoFile(null); 
-    setDeliveryPhotoPreview(null); 
+    setDeliveryPhotoFile(null);
+    setDeliveryPhotoPreview(null);
     if (deliveryPhotoInputRef.current) deliveryPhotoInputRef.current.value = '';
 
     const { error: updateError } = await supabase
@@ -859,11 +868,21 @@ export default function PackageTrackerApp() {
                 Recipient Signature (One signature for all selected packages) *
               </label>
               <div className="border-2 border-gray-400 rounded-xl bg-gray-50 p-3 flex flex-col items-center shadow-inner">
-                {/* Fixed-height container with w-full ensures the canvas fits cleanly without clipping */}
-                <div className="w-full h-48 bg-white border-2 border-dashed border-gray-500 rounded-lg overflow-hidden relative">
+                <div className="w-full h-64 bg-white border-2 border-dashed border-gray-500 rounded-lg overflow-hidden relative">
+                  {/* Subtle baseline guide to keep low signatures inside the box */}
+                  <div
+                    aria-hidden="true"
+                    className="pointer-events-none absolute inset-x-6 bottom-12 border-b border-dashed border-gray-300"
+                  />
+                  <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute left-6 bottom-5 text-xs font-semibold text-gray-400 select-none"
+                  >
+                    Sign above line
+                  </span>
                   <canvas
                     ref={canvasRef}
-                    className="w-full h-full cursor-crosshair touch-none block"
+                    className="w-full h-full cursor-crosshair touch-none block relative z-10"
                   />
                 </div>
                 <button
