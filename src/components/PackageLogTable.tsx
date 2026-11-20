@@ -31,14 +31,30 @@ export default function PackageLogTable({ packages }: Props) {
   });
 
   function getSignatureUrl(pkg: PackageItem): string | null {
-    const record = pkg as PackageItem & {
-      signature_url?: string | null;
-      signature_data?: string | null;
-      signature?: string | null;
-    };
-    return record.signature_url || record.signature_data || record.signature || null;
-  }
+    const record = pkg as PackageItem &  Record<string, unknown >; 
+    const raw = 
+        record.signature_url ??
+        record.recipient_signature ??
+        record.signature ??
+        record.signature_data;
 
+    if (typeof raw !== 'string') return null; 
+
+    const trimmed = raw.trim(); 
+    if (!trimmed) return null; 
+
+    const match = trimmed.match(/^data:image\/[a-zA-Z0-9+.-]+;base64,(.+)$/);
+    if (match){
+        return match [1].trim().length > 0 ? trimmed : null; 
+    }
+
+    if (trimmed.startsWith ('data: image/') || trimmed.startsWith ('http')){
+        return trimmed;
+    }
+
+    return 'data:image/png;base64,${trimmed}';
+}
+   
   return (
     <div className="mt-8 bg-white p-7 rounded-xl shadow-lg border border-gray-200">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
