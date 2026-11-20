@@ -5,6 +5,7 @@ import { DirectoryEntry, PackageItem } from '@/types/mailroom';
 import { compressImage } from '@/lib/media';
 import EmailLookupInput from './EmailLookupInput';
 import SignaturePad from 'signature_pad';
+import { saveToDirectory } from '@/lib/directory';
 
 const POSITIONS = ['Student Assistant', 'Faculty', 'Staff', 'Administration', 'Vendor', 'Academics', 'Other'];
 
@@ -157,6 +158,15 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
     if (deliveryEmail.trim()) {
       const selectedList = packages.filter((p) => selectedPackageIds.includes(p.id));
       const originalRecipientName = selectedList[0]?.recipient_name || deliveryRecipient;
+
+      await saveToDirectory({
+        name: originalRecipientName,
+        email: deliveryEmail,
+        building: selectedList[0]?.building,
+        room_number: selectedList[0]?.room_number,
+        position: deliveryPosition,
+      });
+
       const pickedUpPackages = selectedList.map((p) => ({
         tracking_number: p.tracking_number,
         carrier: `${p.carrier || ''} ${p.carrier_type ? `(${p.carrier_type})` : ''}`.trim(),

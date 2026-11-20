@@ -5,6 +5,7 @@ import { DirectoryEntry } from '@/types/mailroom';
 import { compressImage } from '@/lib/media';
 import EmailLookupInput from './EmailLookupInput';
 import { Html5Qrcode, Html5QrcodeSupportedFormats } from 'html5-qrcode';
+import { saveToDirectory } from '@/lib/directory';
 
 const CARRIERS = ['Amazon', 'USPS', 'UPS', 'FedEx', 'DHL', 'OnTrac/Lasership', 'Internal Campus', 'Other'];
 const CARRIERS_TYPES = [
@@ -195,6 +196,13 @@ export default function IntakeTab({ directory, onSaved }: Props) {
     }
 
     if (recipientEmail.trim()) {
+        await saveToDirectory({
+            name: recipient, 
+            email: recipientEmail, 
+            building, 
+            room_number : roomNumber,
+        } );
+        
       try {
         await fetch('/api/send-email', {
           method: 'POST',

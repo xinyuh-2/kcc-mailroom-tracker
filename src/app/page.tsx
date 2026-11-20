@@ -12,16 +12,35 @@ export default function PackageTrackerApp() {
   const [packages, setPackages] = useState<PackageItem[]>([]);
   const [directory, setDirectory] = useState<DirectoryEntry[]>([]);
 
-  async function fetchPackages() {
-    const { data } = await supabase
-      .from('packages')
-      .select('*')
-      .order('received_at', { ascending: false });
-    if (data) setPackages(data);
-  }
-
   async function refreshAll() {
-    await Promise.all([fetchPackages(), fetchDirectory().then(setDirectory)]);
+    const [{ data: pkgData }, dirData] = await Promise.all([
+      supabase.from('packages').select('*').order('received_at', { ascending: false }),
+      fetchDirectory(),
+    ]);
+
+    const loadedPackages = pkgData || [];
+    setPackages(loadedPackages);
+
+    // Merge saved directory with unique emails from past packages
+    const byEmail = new Map<string, DirectoryEntry>();
+    for (const entry of dirData) {
+      byEmail.set(entry.email.toLowerCase(), entry);
+    }
+    for (const pkg of loadedPackages) {
+      const email = pkg.recipient_email?.trim().toLowerCase();
+      if (email && !byEmail.has(email) && pkg.recipient_name) {
+        byEmail.set(email, {
+          id: pkg.id,
+          name: pkg.recipient_name,
+          email,
+          building: pkg.building,
+          room_number: pkg.room_number,
+          position: pkg.recipient_position,
+        });
+      }
+    }
+
+    setDirectory(Array.from(byEmail.values()));
   }
 
   useEffect(() => {
