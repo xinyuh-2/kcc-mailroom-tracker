@@ -120,8 +120,8 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
         {
           recipient_name: deliveryRecipient,
           delivered_by: deliveredBy,
-          signature_url: signatureDataUrl,
           photo_url: deliveryPhotoURL,
+          signature_url: signatureDataUrl,
         },
       ])
       .select()
@@ -145,7 +145,6 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
         recipient_position: deliveryPosition,
         delivered_by: deliveredBy,
         delivered_at: deliveredIso,
-        signature_url: signatureDataUrl,
         status: 'Delivered',
       })
       .in('id', selectedPackageIds);
