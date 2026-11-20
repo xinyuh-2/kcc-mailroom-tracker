@@ -15,12 +15,26 @@ export default function PackageTrackerApp() {
   const [directory, setDirectory] = useState<DirectoryEntry[]>([]);
 
   async function refreshAll() {
-    const [{ data: pkgData }, dirData] = await Promise.all([
+    const [{ data: pkgData }, { data: delData }, dirData] = await Promise.all([
       supabase.from('packages').select('*').order('received_at', { ascending: false }),
+      supabase.from('deliveries').select('id, signature_url'),
       fetchDirectory(),
     ]);
 
-    const loadedPackages = pkgData || [];
+    const signatureByDeliveryId = new Map<string, string>();
+    for (const del of delData || []) {
+      if (del.id && del.signature_url) {
+        signatureByDeliveryId.set(del.id, del.signature_url);
+      }
+    }
+
+    const loadedPackages: PackageItem[] = (pkgData || []).map((pkg: any) => ({
+      ...pkg,
+      signature_url:
+        pkg.signature_url ||
+        (pkg.delivery_id ? signatureByDeliveryId.get(pkg.delivery_id) ?? null : null),
+    }));
+
     setPackages(loadedPackages);
 
     const byEmail = new Map<string, DirectoryEntry>();
