@@ -12,6 +12,7 @@ export interface PackageItem {
   carrier_type?: string | null;
   notes?: string | null;
   photo_url?: string | null;
+  signature_url?: string | null;
   received_at?: string | null;
   delivered_at?: string | null;
   status: 'Pending' | 'Delivered';

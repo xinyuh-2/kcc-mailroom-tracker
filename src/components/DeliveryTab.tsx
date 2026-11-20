@@ -145,7 +145,7 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
         recipient_position: deliveryPosition,
         delivered_by: deliveredBy,
         delivered_at: deliveredIso,
-        signature: signatureDataUrl,
+        signature_url: signatureDataUrl,
         status: 'Delivered',
       })
       .in('id', selectedPackageIds);
