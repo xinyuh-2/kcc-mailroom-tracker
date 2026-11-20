@@ -91,7 +91,7 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
     }
 
     setLoading(true);
-    const signatureDataUrl = signaturePadRef.current?.toDataURL();
+    const signatureDataUrl = signaturePadRef.current?.toDataURL() ?? null;
     const deliveredIso = new Date().toISOString();
 
     let deliveryPhotoURL: string | null = null;
@@ -145,6 +145,7 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
         recipient_position: deliveryPosition,
         delivered_by: deliveredBy,
         delivered_at: deliveredIso,
+        signature: signatureDataUrl,
         status: 'Delivered',
       })
       .in('id', selectedPackageIds);
