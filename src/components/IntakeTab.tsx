@@ -44,6 +44,7 @@ const CAMPUS_BUILDINGS = [
   'Kauila',
   'Other',
 ];
+const MAX_INTAKE_PHOTOS = 4;
 
 interface Props {
   directory: DirectoryEntry[];
@@ -65,8 +66,9 @@ export default function IntakeTab({ directory, onSaved }: Props) {
   const [customCarrierType, setCustomCarrierType] = useState('');
   const [notes, setNotes] = useState('');
 
-  const [photoFile, setPhotoFile] = useState<File | null>(null);
-  const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   const [isScanning, setIsScanning] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
@@ -137,21 +139,38 @@ export default function IntakeTab({ directory, onSaved }: Props) {
     setIsScanning(false);
   }
 
+  function syncPhotoPreviews(files: File[]) {
+    setPhotoFiles(files);
+    setPhotoPreviews(files.map((file) => URL.createObjectURL(file)));
+  }
+
   function handlePhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setPhotoFile(file);
-    setPhotoPreview(URL.createObjectURL(file));
+    const picked = Array.from(e.target.files || []);
+    if (picked.length === 0) return;
+
+    const merged = [...photoFiles, ...picked].slice(0, MAX_INTAKE_PHOTOS);
+    if (photoFiles.length + picked.length > MAX_INTAKE_PHOTOS) {
+      alert(`Up to ${MAX_INTAKE_PHOTOS} intake photos are allowed per package.`);
+    }
+
+    syncPhotoPreviews(merged);
+    if (photoInputRef.current) photoInputRef.current.value = '';
+  }
+
+  function removePhoto(indexToRemove: number) {
+    const updated = photoFiles.filter((_, idx) => idx !== indexToRemove);
+    syncPhotoPreviews(updated);
   }
 
   async function handleIntake(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
-    let uploadedPhotoUrl: string | null = null;
+    const uploadedPhotoUrls: string[] = [];
 
-    if (photoFile) {
-      const compressedBlob = await compressImage(photoFile);
-      const fileName = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}.jpg`;
+    for (let i = 0; i < photoFiles.length; i++) {
+      const file = photoFiles[i];
+      const compressedBlob = await compressImage(file);
+      const fileName = `${Date.now()}-${i + 1}-${Math.random().toString(36).substring(2, 7)}.jpg`;
       const { error: uploadError } = await supabase.storage
         .from('package-photos')
         .upload(fileName, compressedBlob, { contentType: 'image/jpeg' });
@@ -165,9 +184,10 @@ export default function IntakeTab({ directory, onSaved }: Props) {
       const { data: publicUrlData } = supabase.storage
         .from('package-photos')
         .getPublicUrl(fileName);
-      uploadedPhotoUrl = publicUrlData.publicUrl;
+      uploadedPhotoUrls.push(publicUrlData.publicUrl);
     }
 
+    const primaryPhotoUrl = uploadedPhotoUrls[0] ?? null;
     const finalCarrier = carrier === 'Other' ? customCarrier.trim() || 'Other' : carrier;
     const finalCarrierType = carrierType === 'Other' ? customCarrierType.trim() || 'Other' : carrierType;
     const nowIso = new Date().toISOString();
@@ -183,7 +203,7 @@ export default function IntakeTab({ directory, onSaved }: Props) {
         carrier: finalCarrier,
         carrier_type: finalCarrierType,
         notes,
-        photo_url: uploadedPhotoUrl,
+        photo_url: primaryPhotoUrl,
         received_at: nowIso,
         status: 'Pending',
       },
@@ -196,12 +216,12 @@ export default function IntakeTab({ directory, onSaved }: Props) {
     }
 
     if (recipientEmail.trim()) {
-        await saveToDirectory({
-            name: recipient, 
-            email: recipientEmail, 
-            building, 
-            room_number : roomNumber,
-        } );
+      await saveToDirectory({
+        name: recipient,
+        email: recipientEmail,
+        building,
+        room_number: roomNumber,
+      });
       try {
         await fetch('/api/send-email', {
           method: 'POST',
@@ -218,7 +238,7 @@ export default function IntakeTab({ directory, onSaved }: Props) {
                 building,
                 room_number: roomNumber,
                 notes,
-                photo_url: uploadedPhotoUrl,
+                photo_url: primaryPhotoUrl,
               },
             ],
           }),
@@ -236,8 +256,9 @@ export default function IntakeTab({ directory, onSaved }: Props) {
     setCustomCarrier('');
     setCustomCarrierType('');
     setNotes('');
-    setPhotoFile(null);
-    setPhotoPreview(null);
+    setPhotoFiles([]);
+    setPhotoPreviews([]);
+    if (photoInputRef.current) photoInputRef.current.value = '';
     await onSaved();
     alert('Package logged successfully!');
   }
@@ -410,20 +431,43 @@ export default function IntakeTab({ directory, onSaved }: Props) {
       </div>
 
       <div>
-        <label className="block text-base font-bold text-gray-900 mb-1.5">Package Photo (Optional)</label>
+        <label className="block text-base font-bold text-gray-900 mb-1.5">
+          Package Photos (Optional, up to {MAX_INTAKE_PHOTOS} — {photoFiles.length} added)
+        </label>
         <input
           type="file"
           accept="image/*"
+          multiple
           capture="environment"
+          ref={photoInputRef}
           onChange={handlePhotoSelect}
           className="block w-full text-base font-semibold text-gray-800 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-blue-100 file:text-blue-900 hover:file:bg-blue-200 cursor-pointer"
         />
-        {photoPreview && (
-          <img
-            src={photoPreview}
-            alt="Package preview"
-            className="mt-3 h-36 w-auto rounded-lg border-2 border-gray-400 object-cover shadow"
-          />
+        {photoPreviews.length > 0 && (
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {photoPreviews.map((src, idx) => (
+              <div
+                key={src}
+                className="relative rounded-lg border-2 border-gray-300 bg-gray-50 p-1.5 shadow-sm"
+              >
+                <img
+                  src={src}
+                  alt={`Package preview ${idx + 1}`}
+                  className="h-28 w-full rounded-md object-cover"
+                />
+                <div className="mt-1 flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-gray-700">Photo {idx + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => removePhoto(idx)}
+                    className="text-xs font-bold text-red-700 hover:text-red-900 underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
