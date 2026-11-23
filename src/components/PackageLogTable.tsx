@@ -16,6 +16,12 @@ export default function PackageLogTable({ packages }: Props) {
     deliveredAt?: string | null;
     deliveredBy?: string | null;
   } | null>(null);
+  const [selectedPhotos, setSelectedPhotos] = useState<{
+    title: string;
+    recipientName: string;
+    trackingNumber: string;
+    urls: string[];
+  } | null>(null);
 
   const filteredHistory = packages.filter((p) => {
     const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
@@ -53,6 +59,24 @@ export default function PackageLogTable({ packages }: Props) {
     }
 
     return `data:image/png;base64,${trimmed}`;
+  }
+
+  function getIntakePhotoUrls(pkg: PackageItem): string[] {
+    const record = pkg as PackageItem & Record<string, unknown>;
+    const arr = record.photo_urls;
+    if (Array.isArray(arr) && arr.length > 0) {
+      return arr.filter((u): u is string => typeof u === 'string' && u.trim().length > 0);
+    }
+    return pkg.photo_url ? [pkg.photo_url] : [];
+  }
+
+  function getDeliveryPhotoUrls(pkg: PackageItem): string[] {
+    const record = pkg as PackageItem & Record<string, unknown>;
+    const arr = record.delivery_photo_urls;
+    if (Array.isArray(arr) && arr.length > 0) {
+      return arr.filter((u): u is string => typeof u === 'string' && u.trim().length > 0);
+    }
+    return pkg.delivery_photo_url ? [pkg.delivery_photo_url] : [];
   }
 
   return (
@@ -99,6 +123,8 @@ export default function PackageLogTable({ packages }: Props) {
           <tbody className="font-semibold text-gray-800">
             {filteredHistory.map((p) => {
               const signatureUrl = getSignatureUrl(p);
+              const intakePhotos = getIntakePhotoUrls(p);
+              const deliveryPhotos = getDeliveryPhotoUrls(p);
 
               return (
                 <tr key={p.id} className="border-b border-gray-200 hover:bg-gray-50">
@@ -141,29 +167,41 @@ export default function PackageLogTable({ packages }: Props) {
                     )}
                   </td>
                   <td className="p-3 text-sm">
-                    {p.photo_url ? (
-                      <a
-                        href={p.photo_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-blue-700 font-bold underline"
+                    {intakePhotos.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedPhotos({
+                            title: 'Intake Photos',
+                            recipientName: p.recipient_name || 'Recipient',
+                            trackingNumber: p.tracking_number,
+                            urls: intakePhotos,
+                          })
+                        }
+                        className="text-blue-700 hover:text-blue-900 font-bold underline"
                       >
-                        View
-                      </a>
+                        View{intakePhotos.length > 1 ? ` (${intakePhotos.length})` : ''}
+                      </button>
                     ) : (
                       <span className="text-gray-400 font-semibold">None</span>
                     )}
                   </td>
                   <td className="p-3 text-sm">
-                    {p.delivery_photo_url ? (
-                      <a
-                        href={p.delivery_photo_url}
-                        target="_blank"
-                        rel="noreferrer"
-                        className="text-green-700 font-bold underline"
+                    {deliveryPhotos.length > 0 ? (
+                      <button
+                        type="button"
+                        onClick={() =>
+                          setSelectedPhotos({
+                            title: 'Delivery Photos',
+                            recipientName: p.recipient_name || 'Recipient',
+                            trackingNumber: p.tracking_number,
+                            urls: deliveryPhotos,
+                          })
+                        }
+                        className="text-green-700 hover:text-green-900 font-bold underline"
                       >
-                        View
-                      </a>
+                        View{deliveryPhotos.length > 1 ? ` (${deliveryPhotos.length})` : ''}
+                      </button>
                     ) : (
                       <span className="text-gray-400 font-semibold">None</span>
                     )}
@@ -210,6 +248,66 @@ export default function PackageLogTable({ packages }: Props) {
           </tbody>
         </table>
       </div>
+
+      {/* Multi-Photo Preview Modal */}
+      {selectedPhotos && (
+        <div
+          className="fixed inset-0 z-50 bg-black/60 flex items-center justify-center p-4"
+          onClick={() => setSelectedPhotos(null)}
+        >
+          <div
+            className="bg-white rounded-2xl max-w-3xl w-full p-6 shadow-2xl border-2 border-slate-200 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-start justify-between gap-3 mb-4">
+              <div>
+                <h3 className="text-xl font-extrabold text-gray-900">
+                  {selectedPhotos.title} ({selectedPhotos.urls.length})
+                </h3>
+                <p className="text-base font-bold text-gray-700">
+                  {selectedPhotos.recipientName} •{' '}
+                  <span className="font-mono">{selectedPhotos.trackingNumber}</span>
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setSelectedPhotos(null)}
+                className="px-3.5 py-2 rounded-lg bg-slate-100 hover:bg-slate-200 text-base font-extrabold text-gray-800"
+              >
+                Close
+              </button>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {selectedPhotos.urls.map((url, index) => (
+                <div
+                  key={`${url}-${index}`}
+                  className="bg-slate-50 border-2 border-slate-200 rounded-xl p-2.5 flex flex-col"
+                >
+                  <a href={url} target="_blank" rel="noreferrer" className="block">
+                    <img
+                      src={url}
+                      alt={`${selectedPhotos.title} ${index + 1}`}
+                      className="w-full h-60 object-contain bg-white rounded-lg border border-slate-200"
+                    />
+                  </a>
+                  <div className="mt-2 flex items-center justify-between px-1">
+                    <span className="text-sm font-bold text-gray-700">Photo {index + 1}</span>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noreferrer"
+                      className="text-sm font-bold text-blue-700 underline"
+                    >
+                      Open Full Size
+                    </a>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Signature Preview Modal */}
       {selectedSignature && (

@@ -12,6 +12,7 @@ export interface PackageItem {
   carrier_type?: string | null;
   notes?: string | null;
   photo_url?: string | null;
+  photo_urls?: string[] | null;
   delivery_photo_url?: string | null;
   signature_url?: string | null;
   delivery_id?: string | null;

@@ -204,6 +204,7 @@ export default function IntakeTab({ directory, onSaved }: Props) {
         carrier_type: finalCarrierType,
         notes,
         photo_url: primaryPhotoUrl,
+        photo_urls :uploadedPhotoUrls,
         received_at: nowIso,
         status: 'Pending',
       },

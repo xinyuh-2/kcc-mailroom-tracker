@@ -141,6 +141,7 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
           delivered_by: deliveredBy,
           signature_url: signatureDataUrl,
           photo_url: uploadedPhotoUrls[0] ?? null,
+          photo_urls :uploadedPhotoUrls,
         },
       ])
       .select()

@@ -17,29 +17,64 @@ export default function PackageTrackerApp() {
   async function refreshAll() {
     const [{ data: pkgData }, { data: delData }, dirData] = await Promise.all([
       supabase.from('packages').select('*').order('received_at', { ascending: false }),
-      supabase.from('deliveries').select('id, signature_url, photo_url'),
+      supabase.from('deliveries').select('id, signature_url, photo_url, photo_urls'),
       fetchDirectory(),
     ]);
 
     const deliveryById = new Map<
       string,
-      { signature_url: string | null; photo_url: string | null }
+      {
+        signature_url: string | null;
+        photo_url: string | null;
+        photo_urls: string[];
+      }
     >();
+
     for (const del of delData || []) {
       if (del.id) {
+        const delUrls =
+          Array.isArray(del.photo_urls) && del.photo_urls.length > 0
+            ? del.photo_urls
+            : del.photo_url
+            ? [del.photo_url]
+            : [];
+
         deliveryById.set(del.id, {
           signature_url: del.signature_url ?? null,
-          photo_url: del.photo_url ?? null,
+          photo_url: delUrls[0] ?? del.photo_url ?? null,
+          photo_urls: delUrls,
         });
       }
     }
 
     const loadedPackages: PackageItem[] = (pkgData || []).map((pkg: any) => {
       const linkedDelivery = pkg.delivery_id ? deliveryById.get(pkg.delivery_id) : undefined;
+
+      const intakeUrls =
+        Array.isArray(pkg.photo_urls) && pkg.photo_urls.length > 0
+          ? pkg.photo_urls
+          : pkg.photo_url
+          ? [pkg.photo_url]
+          : [];
+
+      const deliveryUrls =
+        Array.isArray(pkg.delivery_photo_urls) && pkg.delivery_photo_urls.length > 0
+          ? pkg.delivery_photo_urls
+          : linkedDelivery?.photo_urls?.length
+          ? linkedDelivery.photo_urls
+          : pkg.delivery_photo_url
+          ? [pkg.delivery_photo_url]
+          : linkedDelivery?.photo_url
+          ? [linkedDelivery.photo_url]
+          : [];
+
       return {
         ...pkg,
+        photo_url: intakeUrls[0] ?? pkg.photo_url ?? null,
+        photo_urls: intakeUrls,
         signature_url: pkg.signature_url || linkedDelivery?.signature_url || null,
-        delivery_photo_url: pkg.delivery_photo_url || linkedDelivery?.photo_url || null,
+        delivery_photo_url: deliveryUrls[0] ?? linkedDelivery?.photo_url ?? null,
+        delivery_photo_urls: deliveryUrls,
       };
     });
 
