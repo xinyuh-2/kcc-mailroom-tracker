@@ -17,23 +17,31 @@ export default function PackageTrackerApp() {
   async function refreshAll() {
     const [{ data: pkgData }, { data: delData }, dirData] = await Promise.all([
       supabase.from('packages').select('*').order('received_at', { ascending: false }),
-      supabase.from('deliveries').select('id, signature_url'),
+      supabase.from('deliveries').select('id, signature_url, photo_url'),
       fetchDirectory(),
     ]);
 
-    const signatureByDeliveryId = new Map<string, string>();
+    const deliveryById = new Map<
+      string,
+      { signature_url: string | null; photo_url: string | null }
+    >();
     for (const del of delData || []) {
-      if (del.id && del.signature_url) {
-        signatureByDeliveryId.set(del.id, del.signature_url);
+      if (del.id) {
+        deliveryById.set(del.id, {
+          signature_url: del.signature_url ?? null,
+          photo_url: del.photo_url ?? null,
+        });
       }
     }
 
-    const loadedPackages: PackageItem[] = (pkgData || []).map((pkg: any) => ({
-      ...pkg,
-      signature_url:
-        pkg.signature_url ||
-        (pkg.delivery_id ? signatureByDeliveryId.get(pkg.delivery_id) ?? null : null),
-    }));
+    const loadedPackages: PackageItem[] = (pkgData || []).map((pkg: any) => {
+      const linkedDelivery = pkg.delivery_id ? deliveryById.get(pkg.delivery_id) : undefined;
+      return {
+        ...pkg,
+        signature_url: pkg.signature_url || linkedDelivery?.signature_url || null,
+        delivery_photo_url: pkg.delivery_photo_url || linkedDelivery?.photo_url || null,
+      };
+    });
 
     setPackages(loadedPackages);
 

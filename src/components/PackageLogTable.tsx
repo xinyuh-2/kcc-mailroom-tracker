@@ -90,7 +90,8 @@ export default function PackageLogTable({ packages }: Props) {
               <th className="p-3">Tracking</th>
               <th className="p-3">Received</th>
               <th className="p-3">Delivered</th>
-              <th className="p-3">Photo</th>
+              <th className="p-3">Intake Photo</th>
+              <th className="p-3">Delivery Photo</th>
               <th className="p-3">Signature</th>
               <th className="p-3">Status</th>
             </tr>
@@ -146,6 +147,20 @@ export default function PackageLogTable({ packages }: Props) {
                         target="_blank"
                         rel="noreferrer"
                         className="text-blue-700 font-bold underline"
+                      >
+                        View
+                      </a>
+                    ) : (
+                      <span className="text-gray-400 font-semibold">None</span>
+                    )}
+                  </td>
+                  <td className="p-3 text-sm">
+                    {p.delivery_photo_url ? (
+                      <a
+                        href={p.delivery_photo_url}
+                        target="_blank"
+                        rel="noreferrer"
+                        className="text-green-700 font-bold underline"
                       >
                         View
                       </a>
