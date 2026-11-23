@@ -8,6 +8,7 @@ import SignaturePad from 'signature_pad';
 import { saveToDirectory } from '@/lib/directory';
 
 const POSITIONS = ['Student Assistant', 'Faculty', 'Staff', 'Administration', 'Vendor', 'Academics', 'Other'];
+const MAX_DELIVERY_PHOTOS = 4;
 
 interface Props {
   packages: PackageItem[];
@@ -27,8 +28,8 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
   const signaturePadRef = useRef<SignaturePad | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
 
-  const [deliveryPhotoFile, setDeliveryPhotoFile] = useState<File | null>(null);
-  const [deliveryPhotoPreview, setDeliveryPhotoPreview] = useState<string | null>(null);
+  const [deliveryPhotoFiles, setDeliveryPhotoFiles] = useState<File[]>([]);
+  const [deliveryPhotoPreviews, setDeliveryPhotoPreviews] = useState<string[]>([]);
   const deliveryPhotoInputRef = useRef<HTMLInputElement | null>(null);
 
   useEffect(() => {
@@ -72,11 +73,27 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
     };
   }, []);
 
-  function handleDeliveryPhotoSelect(e: React.ChangeEvent<HTMLInputElement>) {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setDeliveryPhotoFile(file);
-    setDeliveryPhotoPreview(URL.createObjectURL(file));
+  function syncPhotoPreviews(files: File[]) {
+    setDeliveryPhotoFiles(files);
+    setDeliveryPhotoPreviews(files.map((file) => URL.createObjectURL(file)));
+  }
+
+  function handleDeliveryPhotosSelect(e: React.ChangeEvent<HTMLInputElement>) {
+    const picked = Array.from(e.target.files || []);
+    if (picked.length === 0) return;
+
+    const merged = [...deliveryPhotoFiles, ...picked].slice(0, MAX_DELIVERY_PHOTOS);
+    if (deliveryPhotoFiles.length + picked.length > MAX_DELIVERY_PHOTOS) {
+      alert(`Up to ${MAX_DELIVERY_PHOTOS} delivery/damage photos are allowed per delivery.`);
+    }
+
+    syncPhotoPreviews(merged);
+    if (deliveryPhotoInputRef.current) deliveryPhotoInputRef.current.value = '';
+  }
+
+  function removeDeliveryPhoto(indexToRemove: number) {
+    const updated = deliveryPhotoFiles.filter((_, idx) => idx !== indexToRemove);
+    syncPhotoPreviews(updated);
   }
 
   async function handleDeliveryCheckout(e: React.FormEvent) {
@@ -94,10 +111,11 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
     const signatureDataUrl = signaturePadRef.current?.toDataURL() ?? null;
     const deliveredIso = new Date().toISOString();
 
-    let deliveryPhotoURL: string | null = null;
-    if (deliveryPhotoFile) {
-      const compressedBlob = await compressImage(deliveryPhotoFile);
-      const fileName = `delivery-${Date.now()}-${Math.random().toString(36).substring(2, 7)}.jpg`;
+    const uploadedPhotoUrls: string[] = [];
+    for (let i = 0; i < deliveryPhotoFiles.length; i++) {
+      const file = deliveryPhotoFiles[i];
+      const compressedBlob = await compressImage(file);
+      const fileName = `delivery-${Date.now()}-${i + 1}-${Math.random().toString(36).substring(2, 7)}.jpg`;
       const { error: uploadError } = await supabase.storage
         .from('package-photos')
         .upload(fileName, compressedBlob, { contentType: 'image/jpeg' });
@@ -111,7 +129,8 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
       const { data: publicURLData } = supabase.storage
         .from('package-photos')
         .getPublicUrl(fileName);
-      deliveryPhotoURL = publicURLData.publicUrl;
+
+      uploadedPhotoUrls.push(publicURLData.publicUrl);
     }
 
     const { data: deliveryData, error: deliveryError } = await supabase
@@ -120,8 +139,8 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
         {
           recipient_name: deliveryRecipient,
           delivered_by: deliveredBy,
-          photo_url: deliveryPhotoURL,
           signature_url: signatureDataUrl,
+          photo_url: uploadedPhotoUrls[0] ?? null,
         },
       ])
       .select()
@@ -133,8 +152,8 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
       return;
     }
 
-    setDeliveryPhotoFile(null);
-    setDeliveryPhotoPreview(null);
+    setDeliveryPhotoFiles([]);
+    setDeliveryPhotoPreviews([]);
     if (deliveryPhotoInputRef.current) deliveryPhotoInputRef.current.value = '';
 
     const { error: updateError } = await supabase
@@ -322,22 +341,39 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
 
       <div>
         <label className="block text-base font-bold text-gray-900 mb-1.5">
-          Delivery / Drop-Off Photo (Optional)
+          Delivery / Damage Photos (Optional, up to {MAX_DELIVERY_PHOTOS} — {deliveryPhotoFiles.length} added)
         </label>
         <input
           type="file"
           accept="image/*"
+          multiple
           capture="environment"
           ref={deliveryPhotoInputRef}
-          onChange={handleDeliveryPhotoSelect}
+          onChange={handleDeliveryPhotosSelect}
           className="block w-full text-base font-semibold text-gray-800 file:mr-4 file:py-2.5 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-bold file:bg-green-100 file:text-green-900 hover:file:bg-green-200 cursor-pointer"
         />
-        {deliveryPhotoPreview && (
-          <img
-            src={deliveryPhotoPreview}
-            alt="Delivery preview"
-            className="mt-3 h-36 w-auto rounded-lg border-2 border-gray-400 object-cover shadow"
-          />
+        {deliveryPhotoPreviews.length > 0 && (
+          <div className="mt-3 grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {deliveryPhotoPreviews.map((src, idx) => (
+              <div key={src} className="relative rounded-lg border-2 border-gray-300 bg-gray-50 p-1.5 shadow-sm">
+                <img
+                  src={src}
+                  alt={`Delivery photo ${idx + 1}`}
+                  className="h-28 w-full rounded-md object-cover"
+                />
+                <div className="mt-1 flex items-center justify-between px-1">
+                  <span className="text-xs font-bold text-gray-700">Photo {idx + 1}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeDeliveryPhoto(idx)}
+                    className="text-xs font-bold text-red-700 hover:text-red-900 underline"
+                  >
+                    Remove
+                  </button>
+                </div>
+              </div>
+            ))}
+          </div>
         )}
       </div>
 
