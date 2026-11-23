@@ -42,7 +42,7 @@ export default function IntakeTab({ directory, onSaved }: Props) {
 
     const merged = [...intakePhotoFiles, ...picked].slice(0, MAX_INTAKE_PHOTOS);
     if (intakePhotoFiles.length + picked.length > MAX_INTAKE_PHOTOS) {
-      alert(`Up to ${MAX_INTAKE_PHOTOS} intake/damage photos are allowed per package.`);
+      alert(`Up to ${MAX_INTAKE_PHOTOS} intake photos are allowed per package.`);
     }
 
     syncPhotoPreviews(merged);
@@ -255,7 +255,7 @@ export default function IntakeTab({ directory, onSaved }: Props) {
 
       <div>
         <label className="block text-base font-bold text-gray-900 mb-1.5">
-          Package / Damage Photos (Optional, up to {MAX_INTAKE_PHOTOS} — {intakePhotoFiles.length} added)
+          Package Photos (Optional, up to {MAX_INTAKE_PHOTOS} — {intakePhotoFiles.length} added)
         </label>
         <input
           type="file"
@@ -295,13 +295,13 @@ export default function IntakeTab({ directory, onSaved }: Props) {
       </div>
 
       <div>
-        <label className="block text-base font-bold text-gray-900 mb-1.5">Notes / Condition</label>
+        <label className="block text-base font-bold text-gray-900 mb-1.5">Notes</label>
         <textarea
           rows={2}
           value={notes}
           onChange={(e) => setNotes(e.target.value)}
           className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold focus:border-blue-600 focus:outline-none"
-          placeholder="Optional damage notes or special instructions"
+          placeholder="Optional notes or special instructions"
         />
       </div>
 
