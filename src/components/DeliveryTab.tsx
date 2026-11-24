@@ -168,6 +168,7 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
         recipient_email: deliveryEmail,
         recipient_position: resolvedPosition,
         delivered_by: deliveredBy,
+        picked_up_by: deliveryRecipient.trim() || null,
         delivered_at: deliveredIso,
         delivery_notes: resolvedNotes,
         status: 'Delivered',
