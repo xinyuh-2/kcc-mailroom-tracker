@@ -301,7 +301,7 @@ export default function IntakeTab({ directory, onSaved }: Props) {
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
         <div>
-          <label className="block text-base font-bold text-gray-900 mb-1.5">Recipient Name *</label>
+          <label className="block text-base font-bold text-gray-900 mb-1.5">Recipient Name</label>
           <input
             type="text"
             value={recipient}

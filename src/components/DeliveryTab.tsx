@@ -21,8 +21,9 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
   const [deliverySearch, setDeliverySearch] = useState('');
   const [deliveryRecipient, setDeliveryRecipient] = useState('');
   const [deliveryEmail, setDeliveryEmail] = useState('');
-  const [deliveryPosition, setDeliveryPosition] = useState('Staff');
+  const [deliveryPosition, setDeliveryPosition] = useState('');
   const [deliveredBy, setDeliveredBy] = useState('');
+  const [deliveryNotes, setDeliveryNotes] = useState('');
   const [selectedPackageIds, setSelectedPackageIds] = useState<string[]>([]);
 
   const signaturePadRef = useRef<SignaturePad | null>(null);
@@ -102,14 +103,16 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
       alert('Please select at least one package to deliver.');
       return;
     }
-    if (signaturePadRef.current?.isEmpty()) {
-      alert('Please provide a signature.');
-      return;
-    }
 
     setLoading(true);
-    const signatureDataUrl = signaturePadRef.current?.toDataURL() ?? null;
+    const hasSignature = signaturePadRef.current && !signaturePadRef.current.isEmpty();
+    const signatureDataUrl = hasSignature ? (signaturePadRef.current?.toDataURL() ?? null) : null;
     const deliveredIso = new Date().toISOString();
+    const selectedList = packages.filter((p) => selectedPackageIds.includes(p.id));
+    const resolvedRecipientName =
+      deliveryRecipient.trim() || selectedList[0]?.recipient_name || 'Unspecified Recipient';
+    const resolvedPosition = deliveryPosition.trim() || null;
+    const resolvedNotes = deliveryNotes.trim() || null;
 
     const uploadedPhotoUrls: string[] = [];
     for (let i = 0; i < deliveryPhotoFiles.length; i++) {
@@ -137,11 +140,12 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
       .from('deliveries')
       .insert([
         {
-          recipient_name: deliveryRecipient,
+          recipient_name: resolvedRecipientName,
           delivered_by: deliveredBy,
           signature_url: signatureDataUrl,
           photo_url: uploadedPhotoUrls[0] ?? null,
-          photo_urls :uploadedPhotoUrls,
+          photo_urls: uploadedPhotoUrls,
+          notes: resolvedNotes,
         },
       ])
       .select()
@@ -162,9 +166,10 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
       .update({
         delivery_id: deliveryData.id,
         recipient_email: deliveryEmail,
-        recipient_position: deliveryPosition,
+        recipient_position: resolvedPosition,
         delivered_by: deliveredBy,
         delivered_at: deliveredIso,
+        delivery_notes: resolvedNotes,
         status: 'Delivered',
       })
       .in('id', selectedPackageIds);
@@ -176,16 +181,17 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
     }
 
     if (deliveryEmail.trim()) {
-      const selectedList = packages.filter((p) => selectedPackageIds.includes(p.id));
-      const originalRecipientName = selectedList[0]?.recipient_name || deliveryRecipient;
+      const originalRecipientName = selectedList[0]?.recipient_name || resolvedRecipientName;
 
-      await saveToDirectory({
-        name: originalRecipientName,
-        email: deliveryEmail,
-        building: selectedList[0]?.building,
-        room_number: selectedList[0]?.room_number,
-        position: deliveryPosition,
-      });
+      if (deliveryRecipient.trim()) {
+        await saveToDirectory({
+          name: deliveryRecipient.trim(),
+          email: deliveryEmail,
+          building: selectedList[0]?.building,
+          room_number: selectedList[0]?.room_number,
+          position: resolvedPosition ?? undefined,
+        });
+      }
 
       const pickedUpPackages = selectedList.map((p) => ({
         tracking_number: p.tracking_number,
@@ -204,8 +210,9 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
             type: 'delivery',
             recipient_email: deliveryEmail,
             recipient_name: originalRecipientName,
-            signed_by: deliveryRecipient,
-            recipient_position: deliveryPosition,
+            signed_by: deliveryRecipient.trim() || null,
+            recipient_position: resolvedPosition,
+            notes: resolvedNotes,
             timestamp: deliveredIso,
             packages: pickedUpPackages,
           }),
@@ -224,7 +231,8 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
     setSelectedPackageIds([]);
     setDeliveryRecipient('');
     setDeliveryEmail('');
-    setDeliveryPosition('Staff');
+    setDeliveryPosition('');
+    setDeliveryNotes('');
     setDeliverySearch('');
     signaturePadRef.current?.clear();
     await onSaved();
@@ -250,7 +258,7 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
           onSelect={(person) => {
             if (!deliveryRecipient.trim()) setDeliveryRecipient(person.name);
             setDeliveryEmail(person.email);
-            if (person.position) setDeliveryPosition(person.position);
+            if (person.position && !deliveryPosition) setDeliveryPosition(person.position);
           }}
         />
 
@@ -382,25 +390,27 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label className="block text-base font-bold text-gray-900 mb-1.5">
-              Recipient Name (Picking up) *
+              Recipient Name (Picking up, Optional)
             </label>
             <input
               type="text"
               value={deliveryRecipient}
               onChange={(e) => setDeliveryRecipient(e.target.value)}
-              required
               className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold bg-white focus:border-blue-600 focus:outline-none"
-              placeholder="Person signing"
+              placeholder="Person signing (optional)"
             />
           </div>
 
           <div>
-            <label className="block text-base font-bold text-gray-900 mb-1.5">Position *</label>
+            <label className="block text-base font-bold text-gray-900 mb-1.5">
+              Position (Optional)
+            </label>
             <select
               value={deliveryPosition}
               onChange={(e) => setDeliveryPosition(e.target.value)}
               className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold bg-white focus:border-blue-600 focus:outline-none"
             >
+              <option value="">Select position (optional)</option>
               {POSITIONS.map((pos) => (
                 <option key={pos} value={pos}>{pos}</option>
               ))}
@@ -410,7 +420,20 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
 
         <div>
           <label className="block text-base font-bold text-gray-900 mb-1.5">
-            Recipient Signature (One signature for all selected packages) *
+            Additional Comments (Optional)
+          </label>
+          <textarea
+            rows={3}
+            value={deliveryNotes}
+            onChange={(e) => setDeliveryNotes(e.target.value)}
+            className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold bg-white focus:border-blue-600 focus:outline-none"
+            placeholder="Any extra delivery notes, drop-off details, or reasons no signature was collected..."
+          />
+        </div>
+
+        <div>
+          <label className="block text-base font-bold text-gray-900 mb-1.5">
+            Recipient Signature (Optional, one signature for all selected packages)
           </label>
           <div className="border-2 border-gray-400 rounded-xl bg-gray-50 p-3 flex flex-col items-center shadow-inner">
             <div className="w-full h-64 bg-white border-2 border-dashed border-gray-500 rounded-lg overflow-hidden relative">
@@ -422,7 +445,7 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
                 aria-hidden="true"
                 className="pointer-events-none absolute left-6 bottom-5 text-xs font-semibold text-gray-400 select-none"
               >
-                Sign above line
+                Sign above line (optional)
               </span>
               <canvas
                 ref={canvasRef}
