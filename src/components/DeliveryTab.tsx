@@ -111,6 +111,7 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
     const selectedList = packages.filter((p) => selectedPackageIds.includes(p.id));
     const resolvedRecipientName =
       deliveryRecipient.trim() || selectedList[0]?.recipient_name || 'Unspecified Recipient';
+    const resolvedPickedUpBy = deliveryRecipient.trim() || null;
     const resolvedPosition = deliveryPosition.trim() || null;
     const resolvedNotes = deliveryNotes.trim() || null;
 
@@ -141,6 +142,7 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
       .insert([
         {
           recipient_name: resolvedRecipientName,
+          picked_up_by: resolvedPickedUpBy,
           delivered_by: deliveredBy,
           signature_url: signatureDataUrl,
           photo_url: uploadedPhotoUrls[0] ?? null,
@@ -168,7 +170,7 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
         recipient_email: deliveryEmail,
         recipient_position: resolvedPosition,
         delivered_by: deliveredBy,
-        picked_up_by: deliveryRecipient.trim() || null,
+        picked_up_by: resolvedPickedUpBy,
         delivered_at: deliveredIso,
         delivery_notes: resolvedNotes,
         status: 'Delivered',

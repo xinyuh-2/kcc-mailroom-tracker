@@ -26,13 +26,16 @@ export default function PackageLogTable({ packages }: Props) {
   const filteredHistory = packages.filter((p) => {
     const matchesStatus = statusFilter === 'All' || p.status === statusFilter;
     const q = historySearch.toLowerCase();
+    const record = p as PackageItem & Record<string, unknown>;
+    const pickedUpBy = typeof record.picked_up_by === 'string' ? record.picked_up_by : '';
     const matchesQuery =
       p.recipient_name?.toLowerCase().includes(q) ||
       p.recipient_email?.toLowerCase().includes(q) ||
       p.tracking_number?.toLowerCase().includes(q) ||
       p.building?.toLowerCase().includes(q) ||
       p.received_by?.toLowerCase().includes(q) ||
-      p.delivered_by?.toLowerCase().includes(q);
+      p.delivered_by?.toLowerCase().includes(q) ||
+      pickedUpBy.toLowerCase().includes(q);
     return matchesStatus && matchesQuery;
   });
 
@@ -79,6 +82,16 @@ export default function PackageLogTable({ packages }: Props) {
     return pkg.delivery_photo_url ? [pkg.delivery_photo_url] : [];
   }
 
+  function getPickedUpBy(pkg: PackageItem): string | null {
+    if (pkg.status !== 'Delivered') return null;
+    const record = pkg as PackageItem & Record<string, unknown>;
+    const explicit =
+      typeof record.picked_up_by === 'string' && record.picked_up_by.trim().length > 0
+        ? record.picked_up_by.trim()
+        : null;
+    return explicit || pkg.recipient_name || null;
+  }
+
   return (
     <div className="mt-8 bg-white p-7 rounded-xl shadow-lg border border-gray-200">
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-4">
@@ -90,7 +103,7 @@ export default function PackageLogTable({ packages }: Props) {
             type="text"
             value={historySearch}
             onChange={(e) => setHistorySearch(e.target.value)}
-            placeholder="Search name, staff, building..."
+            placeholder="Search name, pickup person, staff..."
             className="p-2.5 text-base border-2 border-gray-400 rounded-lg font-semibold focus:outline-none"
           />
           <select
@@ -113,6 +126,7 @@ export default function PackageLogTable({ packages }: Props) {
               <th className="p-3">Location</th>
               <th className="p-3">Tracking</th>
               <th className="p-3">Received</th>
+              <th className="p-3">Picked Up By</th>
               <th className="p-3">Delivered</th>
               <th className="p-3">Intake Photo</th>
               <th className="p-3">Delivery Photo</th>
@@ -125,6 +139,7 @@ export default function PackageLogTable({ packages }: Props) {
               const signatureUrl = getSignatureUrl(p);
               const intakePhotos = getIntakePhotoUrls(p);
               const deliveryPhotos = getDeliveryPhotoUrls(p);
+              const pickedUpBy = getPickedUpBy(p);
 
               return (
                 <tr key={p.id} className="border-b border-gray-200 hover:bg-gray-50">
@@ -152,6 +167,13 @@ export default function PackageLogTable({ packages }: Props) {
                     <div>{formatDateTime(p.received_at)}</div>
                     {p.received_by && (
                       <div className="text-gray-500 font-bold">By: {p.received_by}</div>
+                    )}
+                  </td>
+                  <td className="p-3 text-sm font-semibold text-gray-800">
+                    {pickedUpBy ? (
+                      <div className="font-bold text-gray-900">{pickedUpBy}</div>
+                    ) : (
+                      <span className="text-gray-400">—</span>
                     )}
                   </td>
                   <td className="p-3 text-sm font-semibold text-gray-700">
@@ -213,7 +235,7 @@ export default function PackageLogTable({ packages }: Props) {
                         onClick={() =>
                           setSelectedSignature({
                             url: signatureUrl,
-                            recipientName: p.recipient_name || 'Recipient',
+                            recipientName: pickedUpBy || p.recipient_name || 'Recipient',
                             deliveredAt: p.delivered_at,
                             deliveredBy: p.delivered_by,
                           })
@@ -222,7 +244,7 @@ export default function PackageLogTable({ packages }: Props) {
                       >
                         <img
                           src={signatureUrl}
-                          alt={`Signature for ${p.recipient_name}`}
+                          alt={`Signature for ${pickedUpBy || p.recipient_name}`}
                           className="h-6 w-14 object-contain bg-white rounded border border-slate-200 px-0.5"
                         />
                         <span>View</span>

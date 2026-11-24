@@ -9,13 +9,14 @@ export interface PackageItem {
   received_by?: string | null;
   delivered_by?: string | null;
   picked_up_by?: string | null;
-  delivery_notes?: string | null;
   carrier: string;
   carrier_type?: string | null;
   notes?: string | null;
   photo_url?: string | null;
   photo_urls?: string[] | null;
   delivery_photo_url?: string | null;
+  delivery_photo_urls?: string[] | null;
+  intake_signature_url?: string | null;
   signature_url?: string | null;
   delivery_id?: string | null;
   received_at?: string | null;
