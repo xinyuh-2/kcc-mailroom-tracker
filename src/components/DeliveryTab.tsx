@@ -350,7 +350,7 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
 
       <div>
         <label className="block text-base font-bold text-gray-900 mb-1.5">
-          Delivery / Damage Photos (Optional, up to {MAX_DELIVERY_PHOTOS} — {deliveryPhotoFiles.length} added)
+          Delivery / Damage Photos (Up to {MAX_DELIVERY_PHOTOS} — {deliveryPhotoFiles.length} added)
         </label>
         <input
           type="file"
@@ -390,27 +390,27 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label className="block text-base font-bold text-gray-900 mb-1.5">
-              Recipient Name (Picking up, Optional)
+              Recipient Name (Picking up)
             </label>
             <input
               type="text"
               value={deliveryRecipient}
               onChange={(e) => setDeliveryRecipient(e.target.value)}
               className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold bg-white focus:border-blue-600 focus:outline-none"
-              placeholder="Person signing (optional)"
+              placeholder="Person signing"
             />
           </div>
 
           <div>
             <label className="block text-base font-bold text-gray-900 mb-1.5">
-              Position (Optional)
+              Position
             </label>
             <select
               value={deliveryPosition}
               onChange={(e) => setDeliveryPosition(e.target.value)}
               className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold bg-white focus:border-blue-600 focus:outline-none"
             >
-              <option value="">Select position (optional)</option>
+              <option value="">Select position</option>
               {POSITIONS.map((pos) => (
                 <option key={pos} value={pos}>{pos}</option>
               ))}
@@ -420,20 +420,20 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
 
         <div>
           <label className="block text-base font-bold text-gray-900 mb-1.5">
-            Additional Comments (Optional)
+            Additional Comments
           </label>
           <textarea
             rows={3}
             value={deliveryNotes}
             onChange={(e) => setDeliveryNotes(e.target.value)}
             className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold bg-white focus:border-blue-600 focus:outline-none"
-            placeholder="Any extra delivery notes, drop-off details, or reasons no signature was collected..."
+            placeholder="Any extra delivery notes or drop-off details..."
           />
         </div>
 
         <div>
           <label className="block text-base font-bold text-gray-900 mb-1.5">
-            Recipient Signature (Optional, one signature for all selected packages)
+            Recipient Signature (One signature for all selected packages)
           </label>
           <div className="border-2 border-gray-400 rounded-xl bg-gray-50 p-3 flex flex-col items-center shadow-inner">
             <div className="w-full h-64 bg-white border-2 border-dashed border-gray-500 rounded-lg overflow-hidden relative">
@@ -445,7 +445,7 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
                 aria-hidden="true"
                 className="pointer-events-none absolute left-6 bottom-5 text-xs font-semibold text-gray-400 select-none"
               >
-                Sign above line (optional)
+                Sign above line
               </span>
               <canvas
                 ref={canvasRef}
