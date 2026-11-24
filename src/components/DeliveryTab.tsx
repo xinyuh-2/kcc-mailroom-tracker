@@ -393,27 +393,27 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
           <div>
             <label className="block text-base font-bold text-gray-900 mb-1.5">
-              Recipient Name (Picking up)
+              Picked Up By <span className="text-sm font-normal text-gray-500">(Optional)</span>
             </label>
             <input
               type="text"
               value={deliveryRecipient}
               onChange={(e) => setDeliveryRecipient(e.target.value)}
               className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold bg-white focus:border-blue-600 focus:outline-none"
-              placeholder="Person signing"
+              placeholder="Person picking up (optional)"
             />
           </div>
 
           <div>
             <label className="block text-base font-bold text-gray-900 mb-1.5">
-              Position
+              Position <span className="text-sm font-normal text-gray-500">(Optional)</span>
             </label>
             <select
               value={deliveryPosition}
               onChange={(e) => setDeliveryPosition(e.target.value)}
               className="w-full p-3 text-base border-2 border-gray-400 rounded-lg font-semibold bg-white focus:border-blue-600 focus:outline-none"
             >
-              <option value="">Select position</option>
+              <option value="">Select position (optional)</option>
               {POSITIONS.map((pos) => (
                 <option key={pos} value={pos}>{pos}</option>
               ))}
@@ -436,7 +436,7 @@ export default function DeliveryTab({ packages, directory, onSaved }: Props) {
 
         <div>
           <label className="block text-base font-bold text-gray-900 mb-1.5">
-            Recipient Signature (One signature for all selected packages)
+            Recipient Signature <span className="text-sm font-normal text-gray-500">(Optional — one signature for all selected packages)</span>
           </label>
           <div className="border-2 border-gray-400 rounded-xl bg-gray-50 p-3 flex flex-col items-center shadow-inner">
             <div className="w-full h-64 bg-white border-2 border-dashed border-gray-500 rounded-lg overflow-hidden relative">
