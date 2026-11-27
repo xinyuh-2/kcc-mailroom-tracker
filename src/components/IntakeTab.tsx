@@ -40,6 +40,7 @@ const CAMPUS_BUILDINGS = [
   'Ohelo',
   'Ohia',
   'Olapa',
+  'Olopua',
   'Olona',
   'Kauila',
   'Other',
