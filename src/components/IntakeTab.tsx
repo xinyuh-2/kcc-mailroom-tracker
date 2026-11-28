@@ -76,55 +76,91 @@ export default function IntakeTab({ directory, onSaved }: Props) {
 
   useEffect(() => {
     return () => {
-      if (scannerRef.current) {
-        scannerRef.current.stop().catch(() => {});
-        scannerRef.current.clear();
+      const scanner = scannerRef.current;
+
+      if (scanner) {
+        scannerRef.current = null;
+
+        void (async () => {
+          try {
+            if (scanner.isScanning) {
+              await scanner.stop();
+            }
+            scanner.clear();
+          } catch (err) {
+            console.error('Scanner cleanup error:', err);
+          }
+        })();
       }
     };
   }, []);
 
+
   async function startScanner() {
     setIsScanning(true);
+
     setTimeout(async () => {
       try {
         const html5QrCode = new Html5Qrcode('barcode-reader', {
           formatsToSupport: [
             Html5QrcodeSupportedFormats.CODE_128,
             Html5QrcodeSupportedFormats.CODE_39,
+            Html5QrcodeSupportedFormats.CODE_93,
             Html5QrcodeSupportedFormats.ITF,
             Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
             Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
             Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.DATA_MATRIX,
+            Html5QrcodeSupportedFormats.PDF_417,
+            Html5QrcodeSupportedFormats.CODABAR,
+            Html5QrcodeSupportedFormats.AZTEC,
+            Html5QrcodeSupportedFormats.MAXICODE,
           ],
-          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
+          experimentalFeatures: {
+            useBarCodeDetectorIfSupported: true,
+          },
           verbose: false,
         });
+
         scannerRef.current = html5QrCode;
+
+        let hasScanned = false;
 
         await html5QrCode.start(
           { facingMode: 'environment' },
           {
-            fps: 20,
-            qrbox: (viewfinderWidth, viewfinderHeight) => ({
-              width: Math.floor(viewfinderWidth * 0.9),
-              height: Math.floor(viewfinderHeight * 0.35),
-            }),
+            fps: 15,
+            disableFlip: false,
             videoConstraints: {
-              facingMode: 'environment',
-              width: { min: 1280, ideal: 1920 },
-              height: { min: 720, ideal: 1080 },
-              advanced: [{ focusMode: 'continuous' } as any],
+              facingMode: { ideal: 'environment' },
+              width: { ideal: 1920 },
+              height: { ideal: 1080 },
             },
           },
           (decodedText) => {
-            setTrackingNum(decodedText);
-            stopScanner();
+            if (hasScanned) return;
+            hasScanned = true;
+
+            setTrackingNum(decodedText.trim());
+
+            if (navigator.vibrate) {
+              navigator.vibrate(100);
+            }
+
+            void stopScanner();
           },
           () => {}
         );
-      } catch {
-        alert('Camera permission denied or unavailable. Make sure you are using HTTPS.');
+      } catch (err) {
+        console.error('Barcode scanner error:', err);
+        scannerRef.current = null;
         setIsScanning(false);
+
+        alert(
+          'Unable to start camera. Please check camera permissions and try again.'
+        );
       }
     }, 100);
   }
@@ -296,9 +332,24 @@ export default function IntakeTab({ directory, onSaved }: Props) {
             {isScanning ? 'Stop' : 'Scan Barcode'}
           </button>
         </div>
-        {isScanning && (
-          <div id="barcode-reader" className="mt-3 border-2 border-gray-400 rounded-lg overflow-hidden" />
-        )}
+        
+{isScanning && (
+  <div className="mt-3 space-y-3">
+    <div className="bg-gray-900 rounded-xl overflow-hidden border-2 border-gray-700">
+      <div id="barcode-reader" className="w-full" />
+    </div>
+
+    <div className="bg-blue-50 border border-blue-200 rounded-lg p-3 text-center">
+      <p className="text-sm font-bold text-blue-900">
+        Scanning for barcode...
+      </p>
+      <p className="text-xs text-blue-700 mt-1">
+        Position the entire tracking barcode inside the camera.
+        Horizontal, vertical, and angled barcodes are supported.
+      </p>
+    </div>
+  </div>
+)}
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-5">
