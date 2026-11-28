@@ -40,19 +40,22 @@ export default function IntakeTab({ directory, onSaved }: Props) {
   const photoInputRef = useRef<HTMLInputElement | null>(null);
 
   const [isScanning, setIsScanning] = useState(false);
-  const [scanHint, setScanHint] = useState(
-    'Supports horizontal and sideways or vertical barcodes'
+  const [scanStatus, setScanStatus] = useState(
+    'Point camera at barcode (horizontal or sideways)'
   );
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const scanTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const isRotatingScanRef = useRef(false);
+  const isStoppingRef = useRef(false);
 
   useEffect(() => {
     return () => {
       if (scanTimerRef.current) clearInterval(scanTimerRef.current);
       if (scannerRef.current) {
         scannerRef.current.stop().catch(() => {});
-        scannerRef.current.clear();
+        try {
+          scannerRef.current.clear();
+        } catch {}
       }
     };
   }, []);
@@ -80,37 +83,88 @@ export default function IntakeTab({ directory, onSaved }: Props) {
     syncPhotoPreviews(updated);
   }
 
-  async function tryRotatedFrameScan() {
-    if (isRotatingScanRef.current) return;
+  async function scanRotatedAngle(video: HTMLVideoElement, degrees: number): Promise<string | null> {
+    if (!video.videoWidth || !video.videoHeight) return null;
+
+    const canvas = document.createElement('canvas');
+    const swapDimensions = degrees === 90 || degrees === 270;
+    canvas.width = swapDimensions ? video.videoHeight : video.videoWidth;
+    canvas.height = swapDimensions ? video.videoWidth : video.videoHeight;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.rotate((degrees * Math.PI) / 180);
+    ctx.drawImage(video, -video.videoWidth / 2, -video.videoHeight / 2);
+
+    const blob = await new Promise<Blob | null>((resolve) =>
+      canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.85)
+    );
+    if (!blob) return null;
+
+    const tempId = 'rotated-barcode-probe';
+    let host = document.getElementById(tempId);
+    if (!host) {
+      host = document.createElement('div');
+      host.id = tempId;
+      host.style.display = 'none';
+      document.body.appendChild(host);
+    }
+
+    const probeScanner = new Html5Qrcode(tempId, {
+      formatsToSupport: [
+        Html5QrcodeSupportedFormats.CODE_128,
+        Html5QrcodeSupportedFormats.CODE_39,
+        Html5QrcodeSupportedFormats.ITF,
+        Html5QrcodeSupportedFormats.EAN_13,
+        Html5QrcodeSupportedFormats.EAN_8,
+        Html5QrcodeSupportedFormats.UPC_A,
+        Html5QrcodeSupportedFormats.UPC_E,
+        Html5QrcodeSupportedFormats.CODABAR,
+        Html5QrcodeSupportedFormats.QR_CODE,
+        Html5QrcodeSupportedFormats.DATA_MATRIX,
+      ],
+      verbose: false,
+    });
+
+    try {
+      const file = new File([blob], `scan-${degrees}.jpg`, { type: 'image/jpeg' });
+      return await probeScanner.scanFile(file, false);
+    } catch {
+      return null;
+    } finally {
+      try {
+        probeScanner.clear();
+      } catch {}
+    }
+  }
+
+  async function tryRotatedFrameScan(manual = false) {
+    if (isRotatingScanRef.current || isStoppingRef.current) return;
     const readerEl = document.getElementById('barcode-reader');
-    const video = readerEl?.querySelector('video');
-    if (!video || video.readyState < 2 || !scannerRef.current) return;
+    const video = readerEl?.querySelector('video') as HTMLVideoElement | null;
+    if (!video || video.readyState < 2) {
+      if (manual) setScanStatus('Camera not ready yet—hold steady and try again.');
+      return;
+    }
 
     isRotatingScanRef.current = true;
+    if (manual) setScanStatus('Checking rotated barcode angles (90° / 270°)...');
+
     try {
-      const canvas = document.createElement('canvas');
-      canvas.width = video.videoHeight;
-      canvas.height = video.videoWidth;
-      const ctx = canvas.getContext('2d');
-      if (!ctx) return;
-
-      ctx.translate(canvas.width / 2, canvas.height / 2);
-      ctx.rotate((90 * Math.PI) / 180);
-      ctx.drawImage(video, -video.videoWidth / 2, -video.videoHeight / 2);
-
-      const blob = await new Promise<Blob | null>((resolve) =>
-        canvas.toBlob((b) => resolve(b), 'image/jpeg', 0.85)
-      );
-      if (!blob || !scannerRef.current) return;
-
-      const rotatedFile = new File([blob], 'rotated-scan.jpg', { type: 'image/jpeg' });
-      const result = await scannerRef.current.scanFile(rotatedFile, false);
-      if (result) {
-        setTrackingNum(result);
-        await stopScanner();
+      for (const angle of [90, 270]) {
+        if (isStoppingRef.current) break;
+        const decoded = await scanRotatedAngle(video, angle);
+        if (decoded) {
+          setTrackingNum(decoded);
+          await stopScanner();
+          return;
+        }
       }
-    } catch {
-      // No barcode found in rotated frame; continue scanning
+      if (manual) {
+        setScanStatus('No barcode detected—move closer or adjust lighting.');
+      }
     } finally {
       isRotatingScanRef.current = false;
     }
@@ -122,8 +176,9 @@ export default function IntakeTab({ directory, onSaved }: Props) {
       return;
     }
 
+    isStoppingRef.current = false;
     setIsScanning(true);
-    setScanHint('Supports horizontal and sideways or vertical barcodes');
+    setScanStatus('Starting camera...');
 
     setTimeout(async () => {
       try {
@@ -133,10 +188,13 @@ export default function IntakeTab({ directory, onSaved }: Props) {
             Html5QrcodeSupportedFormats.CODE_39,
             Html5QrcodeSupportedFormats.ITF,
             Html5QrcodeSupportedFormats.EAN_13,
+            Html5QrcodeSupportedFormats.EAN_8,
             Html5QrcodeSupportedFormats.UPC_A,
+            Html5QrcodeSupportedFormats.UPC_E,
+            Html5QrcodeSupportedFormats.CODABAR,
             Html5QrcodeSupportedFormats.QR_CODE,
+            Html5QrcodeSupportedFormats.DATA_MATRIX,
           ],
-          experimentalFeatures: { useBarCodeDetectorIfSupported: true },
           verbose: false,
         });
         scannerRef.current = html5QrCode;
@@ -144,16 +202,10 @@ export default function IntakeTab({ directory, onSaved }: Props) {
         await html5QrCode.start(
           { facingMode: 'environment' },
           {
-            fps: 20,
+            fps: 15,
             qrbox: (viewfinderWidth, viewfinderHeight) => {
-              const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.82);
-              return { width: size, height: size };
-            },
-            videoConstraints: {
-              facingMode: 'environment',
-              width: { min: 1280, ideal: 1920 },
-              height: { min: 720, ideal: 1080 },
-              advanced: [{ focusMode: 'continuous' } as MediaTrackConstraintSet],
+              const size = Math.floor(Math.min(viewfinderWidth, viewfinderHeight) * 0.8);
+              return { width: Math.max(size, 180), height: Math.max(size, 180) };
             },
           },
           async (decodedText) => {
@@ -163,17 +215,21 @@ export default function IntakeTab({ directory, onSaved }: Props) {
           () => {}
         );
 
+        setScanStatus('Scanning horizontal & sideways barcodes...');
+
         scanTimerRef.current = setInterval(() => {
-          tryRotatedFrameScan();
-        }, 900);
-      } catch {
-        alert('Camera permission denied or unavailable. Make sure you are using HTTPS.');
+          tryRotatedFrameScan(false);
+        }, 1200);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Unable to access camera.';
+        alert(`Camera error: ${msg}. Make sure camera permission is allowed and HTTPS is active.`);
         setIsScanning(false);
       }
     }, 100);
   }
 
   async function stopScanner() {
+    isStoppingRef.current = true;
     if (scanTimerRef.current) {
       clearInterval(scanTimerRef.current);
       scanTimerRef.current = null;
@@ -181,6 +237,8 @@ export default function IntakeTab({ directory, onSaved }: Props) {
     if (scannerRef.current) {
       try {
         await scannerRef.current.stop();
+      } catch {}
+      try {
         scannerRef.current.clear();
       } catch {}
       scannerRef.current = null;
@@ -308,14 +366,14 @@ export default function IntakeTab({ directory, onSaved }: Props) {
               id="barcode-reader"
               className="border-2 border-gray-400 rounded-lg overflow-hidden"
             />
-            <div className="flex items-center justify-between text-xs font-semibold text-gray-600 bg-gray-100 px-3 py-2 rounded-lg">
-              <span>{scanHint}</span>
+            <div className="flex items-center justify-between gap-2 text-xs font-semibold text-gray-700 bg-gray-100 px-3 py-2 rounded-lg">
+              <span>{scanStatus}</span>
               <button
                 type="button"
-                onClick={tryRotatedFrameScan}
-                className="text-blue-700 font-bold underline hover:text-blue-900"
+                onClick={() => tryRotatedFrameScan(true)}
+                className="shrink-0 text-blue-700 font-bold underline hover:text-blue-900"
               >
-                Rotate 90° Now
+                Scan Sideways Now
               </button>
             </div>
           </div>
