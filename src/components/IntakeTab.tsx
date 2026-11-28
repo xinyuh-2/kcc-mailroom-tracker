@@ -153,15 +153,13 @@ export default function IntakeTab({ directory, onSaved }: Props) {
           },
           () => {}
         );
-      } catch (err) {
-        console.error('Barcode scanner error:', err);
-        scannerRef.current = null;
-        setIsScanning(false);
+  } catch (err) {
+  console.error('Barcode scanner error:', err);
+  scannerRef.current = null;
+  setIsScanning(false);
 
-        alert(
-          'Unable to start camera. Please check camera permissions and try again.'
-        );
-      }
+  alert('Barcode scanner error: ' + String(err));
+}
     }, 100);
   }
 
